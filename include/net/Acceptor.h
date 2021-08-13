@@ -7,11 +7,11 @@
 #include "Context.h"
 namespace mutty {
 
-class Acceptor: public std::enable_shared_from_this<Acceptor> {
+class Acceptor /*: public std::enable_shared_from_this<Acceptor>*/ {
 public:
-    Future<std::shared_ptr<Acceptor>> makeFutureGuarded() {
-        return mutty::makeFuture(_looper, shared_from_this());
-    }
+    // Future<std::shared_ptr<Acceptor>> makeFutureGuarded() {
+    //     return mutty::makeFuture(_looper, shared_from_this());
+    // }
 
     Future<Acceptor*> makeFuture() {
         return mutty::makeFuture(_looper, this);
@@ -42,6 +42,15 @@ public:
         _listenDescriptor.setReuseAddr();
         _listenDescriptor.bind(address);
     }
+    // Acceptor(Acceptor&&rhs)
+    //     : _looper(rhs._looper),
+    //       _address(rhs._address),
+    //       _listenDescriptor(std::move(rhs._listenDescriptor)) {}
+
+    Acceptor(const Acceptor&) = delete;
+    Acceptor(Acceptor&&) = default;
+    Acceptor& operator=(const Acceptor&) = delete;
+    Acceptor& operator=(Acceptor&&) = default;
 
 
 private:

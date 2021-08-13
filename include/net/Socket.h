@@ -8,11 +8,10 @@
 #include <sys/socket.h>
 #include <bits/stdc++.h>
 #include "InetAddress.h"
-#include "../utils/NonCopyable.h"
 #include "../throws/Exceptions.h"
 namespace mutty {
 
-class Socket: private NonCopyable {
+class Socket {
 public:
     int fd() const { return _socketFd; }
 
@@ -38,7 +37,9 @@ public:
     Socket();
     ~Socket();
     explicit Socket(int socketFd): _socketFd(socketFd) { assert(_socketFd != INVALID_FD); }
+    Socket(const Socket&) = delete;
     Socket(Socket &&rhs): _socketFd(rhs._socketFd) { rhs._socketFd = INVALID_FD; }
+    Socket& operator=(const Socket&) = delete;
     Socket& operator=(Socket &&rhs);
 
     // int fd = std::move(socket);
