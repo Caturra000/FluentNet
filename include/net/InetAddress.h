@@ -8,7 +8,8 @@ namespace mutty {
 
 struct InetAddress {
 public:
-    InetAddress(sockaddr_in address = {}): _address(address) { createReport(); }
+    InetAddress() = default;
+    InetAddress(sockaddr_in address): _address(address) { createReport(); }
     InetAddress(uint32_t ip, uint16_t port): _address{AF_INET, ::htons(port), ::htonl(ip)} { createReport(); }
     InetAddress(const std::string &ip, uint16_t port): InetAddress(stringToIp(ip), port) { createReport(); }
     InetAddress(const std::string &address);
