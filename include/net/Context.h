@@ -1,5 +1,7 @@
 #ifndef __MUTTY_NET_CONTEXT_H__
 #define __MUTTY_NET_CONTEXT_H__
+#include <poll.h>
+#include <sys/epoll.h>
 #include <bits/stdc++.h>
 #include "../future/Futures.h"
 #include "../utils/Object.h"
@@ -8,9 +10,17 @@
 #include "Buffer.h"
 namespace mutty {
 
+template <typename, typename, typename>
+class Handler;
+
+
 class Context /*: public std::enable_shared_from_this<Context>*/ {
+// friends
 public:
-    // TODO EventState
+    template <typename, typename, typename> friend class Handler;
+
+// networks
+public:
     enum class NetworkState {
         CONNECTING,
         CONNECTED,
@@ -18,18 +28,32 @@ public:
         DISCONNECTED,
     };
 
-//     Future<std::weak_ptr<Context>> makeFuture() {
-// #if __cplusplus > 201402L || __GNUC__
-//         return mutty::makeFuture(looper, weak_from_this());
-// #else
-//         std::weak_ptr<Context> self = shared_from_this();
-//         return mutty::makeFuture(looper, std::move(self));
-// #endif
-//     }
+    bool isConnecting() const { return _nState == NetworkState::CONNECTING; }
+    bool isConnected() const { return _nState == NetworkState::CONNECTED; }
+    bool isDisConnecting() const { return _nState == NetworkState::DISCONNECTING; }
+    bool isDisConnected() const { return _nState == NetworkState::DISCONNECTED; }
 
+    void shutdown() {
+        if(_nState == NetworkState::CONNECTED) {
+            _nState = NetworkState::DISCONNECTING;
+            if(_events & EVENT_WRITE) {
+                socket.shutdown();
+            }
+        }
+    }
+
+    // void forceClose() {
+    //     if(_nState == NetworkState::CONNECTED || _nState == NetworkState::DISCONNECTING) {
+
+    //     }
+    // }
+
+public:
     Future<Context*> makeFuture() {
         return mutty::makeFuture(looper, this);
     }
+
+    int fd() const { return socket.fd(); }
 
     Context(Looper *looper, const InetAddress &address, Socket &&socket)
         : looper(looper),
@@ -41,18 +65,105 @@ public:
     Context& operator=(const Context&) = delete;
     Context& operator=(Context&&) = default;
 
-// private:
+// shared context
 public:
     Looper *looper;
     InetAddress address;
     Socket socket;
+    // captured exception
     std::exception_ptr exception;
     Buffer input;
     Buffer output;
+    // user context, anything is ok
     Object any;
-// private: TODO friend class
-    NetworkState state;
 
+// modified by friend
+private:
+    NetworkState _nState;
+
+// for multiplexer START
+// TODO class
+public:
+    using EventBitmap = uint32_t;
+    constexpr static EventBitmap EVENT_NONE = 0;
+    constexpr static EventBitmap EVENT_READ = POLL_IN | POLL_PRI;
+    constexpr static EventBitmap EVENT_WRITE = POLL_OUT;
+
+    enum class EventState {
+        NEW,
+        ADDED,
+        DELETED
+    };
+
+    using EpollOperationHint = uint;
+    constexpr static EpollOperationHint EPOLL_CTL_NONE = 0;
+
+    // update the event state and return next operation hint for epoll
+    EpollOperationHint updateEventState() {
+        if(_eState == EventState::NEW || _eState == EventState::DELETED) {
+            _eState = EventState::ADDED;
+            return EPOLL_CTL_ADD;
+        }
+
+        // else : EventState::ADD
+
+        if(_events == EVENT_NONE) {
+            _eState = EventState::DELETED;
+            return EPOLL_CTL_DEL;
+        } else {
+            return EPOLL_CTL_MOD;
+        }
+    }
+
+    EventBitmap events() const { return _events; }
+    bool readEventEnabled() const { return _events & EVENT_READ; }
+    bool writeEventEnabled() const { return _events & EVENT_WRITE; }
+
+    // note: must update state for epoll
+    bool enableRead() {
+        if(!(_events & EVENT_READ)) {
+            _events |= EVENT_READ;
+            return true;
+        }
+        return false;
+    }
+
+    bool enableWrite() {
+        if(!(_events & EVENT_WRITE)) {
+            _events |= EVENT_WRITE;
+            return true;
+        }
+        return false;
+    }
+
+    bool disableRead() {
+        if(_events & EVENT_READ) {
+            _events &= ~EVENT_READ;
+            return true;
+        }
+        return false;
+    }
+
+    bool disableWrite() {
+        if(_events & EVENT_WRITE) {
+            _events &= ~EVENT_WRITE;
+            return true;
+        }
+        return false;
+    }
+
+private:
+    EventBitmap _events {EVENT_NONE};
+    EventState _eState {EventState::NEW};
+
+    constexpr static void checkHardCode() {
+        static_assert(EPOLL_CTL_NONE != EPOLL_CTL_ADD
+                      && EPOLL_CTL_NONE != EPOLL_CTL_DEL
+                      && EPOLL_CTL_NONE != EPOLL_CTL_MOD,
+                      "check EPOLL_CTL_NONE");
+    }
+
+// for multiplexer END
 };
 
 } // mutty

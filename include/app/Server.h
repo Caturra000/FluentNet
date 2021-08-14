@@ -5,6 +5,7 @@
 #include "../net/Context.h"
 #include "../net/Acceptor.h"
 #include "../net/Multiplexer.h"
+#include "../net/Handler.h"
 namespace mutty {
 
 template <typename ConnectCallback,
@@ -12,9 +13,9 @@ template <typename ConnectCallback,
           typename CloseCallback>
 class BaseServer;
 
-using Server = BaseServer<std::function<void(Context&)>,
-                          std::function<void(Context&)>,
-                          std::function<void(Context&)>>;
+using Server = BaseServer<std::function<void(Context*)>,
+                          std::function<void(Context*)>,
+                          std::function<void(Context*)>>;
 
 // factory function
 // help template argument deduction
@@ -26,7 +27,7 @@ template <typename ConnectCallbackForward,
           typename MessageCallback = typename std::remove_reference<MessageCallbackForward>::type,
           typename CloseCallbackd  = typename std::remove_reference<CloseCallbackForward>::type>
 inline BaseServer<ConnectCallback, MessageCallback, CloseCallbackd>
-makeServer(InetAddress address,
+makeServer(const InetAddress      &address,
            ConnectCallbackForward &&connectCallback,
            MessageCallbackForward &&messageCallback,
            CloseCallbackForward   &&closeCallback) {
@@ -46,6 +47,7 @@ public:
     using ConnectCallbackType = ConnectCallback;
     using MessageCallbackType = MessageCallback;
     using CloseCallbackType   = CloseCallback;
+    using HandlerType = Handler<ConnectCallback, MessageCallback, CloseCallback>;
 
 public:
     void run() {
@@ -55,6 +57,18 @@ public:
             }
             _looper.loop();
         }
+    }
+
+    void onConnect(ConnectCallback callback) {
+        _handler.onConnect(std::move(callback));
+    }
+
+    void onMessage(MessageCallback callback) {
+        _handler.onMessage(std::move(callback));
+    }
+
+    void onClose(CloseCallback callback) {
+        _handler.onClose(std::move(callback));
     }
 
     BaseServer(InetAddress address)
@@ -75,9 +89,7 @@ public:
         : _acceptor(&_looper, address),
           _multiplexer(std::make_shared<Multiplexer>()),
           _isOuterMultiplexer(false),
-          _connectCallback(std::move(connectCallback)),
-          _messageCallback(std::move(messageCallback)),
-          _closeCallback(std::move(closeCallback)) {}
+          _handler(std::move(connectCallback), std::move(messageCallback), std::move(closeCallback)) {}
 
     BaseServer(InetAddress address,
                std::shared_ptr<Multiplexer> multiplexer,
@@ -87,9 +99,7 @@ public:
         : _acceptor(&_looper, address),
           _multiplexer(std::move(multiplexer)),
           _isOuterMultiplexer(true),
-          _connectCallback(std::move(connectCallback)),
-          _messageCallback(std::move(messageCallback)),
-          _closeCallback(std::move(closeCallback)) {}
+          _handler(std::move(connectCallback), std::move(messageCallback), std::move(closeCallback)) {}
 
     ~BaseServer() = default;
     BaseServer(const BaseServer&) = delete;
@@ -97,27 +107,18 @@ public:
     BaseServer& operator=(const BaseServer&) = delete;
     BaseServer& operator=(BaseServer&&) = default;
 
-    void onConnect(ConnectCallback callback) {
-        _connectCallback = std::move(callback);
-    }
-
-    void onMessage(MessageCallback callback) {
-        _messageCallback = std::move(callback);
-    }
-
-    void onClose(CloseCallback callback) {
-        _closeCallback = std::move(callback);
-    }
-
 private:
     Looper _looper;
     Acceptor _acceptor;
     std::shared_ptr<Multiplexer> _multiplexer;
     bool _isOuterMultiplexer;
     bool _stop {false};
-    ConnectCallback _connectCallback;
-    MessageCallback _messageCallback;
-    CloseCallback _closeCallback;
+    // ConnectCallback _connectCallback;
+    // MessageCallback _messageCallback;
+    // CloseCallback _closeCallback;
+    HandlerType _handler;
+    // special case
+    std::vector<std::unique_ptr<std::pair<size_t, Context>>> _pools;
 };
 
 } // mutty
