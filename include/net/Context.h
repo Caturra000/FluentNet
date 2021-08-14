@@ -10,13 +10,10 @@
 #include "Buffer.h"
 namespace mutty {
 
-template <typename, typename, typename>
-class Handler;
-
-
 class Context /*: public std::enable_shared_from_this<Context>*/ {
 // friends
 public:
+    template <typename, typename, typename> friend class BaseServer;
     template <typename, typename, typename> friend class Handler;
 
 // networks
@@ -79,7 +76,7 @@ public:
 
 // modified by friend
 private:
-    NetworkState _nState;
+    NetworkState _nState {NetworkState::CONNECTING};
 
 // for multiplexer START
 // TODO class

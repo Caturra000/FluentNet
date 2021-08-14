@@ -49,14 +49,25 @@ public:
     using CloseCallbackType   = CloseCallback;
     using HandlerType = Handler<ConnectCallback, MessageCallback, CloseCallback>;
 
+    // unique_ptr makes Context pointer safe in vector rescale and std::swap
+    // token can be accessible in global(server group) multiplexer
+    // TODO O(1) GC
+    using PoolType = std::vector<std::unique_ptr<std::pair<Multiplexer::Token, Context>>>;
+
 public:
     void run() {
         for(; !_stop; ) {
             if(!_isOuterMultiplexer) {
                 _multiplexer->poll(std::chrono::milliseconds::zero());
             }
+            handle();
+            accept();
             _looper.loop();
         }
+    }
+
+    void start() {
+        _acceptor.start();
     }
 
     void onConnect(ConnectCallback callback) {
@@ -72,34 +83,40 @@ public:
     }
 
     BaseServer(InetAddress address)
-        : _acceptor(&_looper, address),
-          _multiplexer(std::make_shared<Multiplexer>()),
-          _isOuterMultiplexer(false) {}
+        : _multiplexer(std::make_shared<Multiplexer>()),
+          _isOuterMultiplexer(false),
+          _token(_multiplexer->token()),
+          _acceptor(&_looper, address),
+          _handler(_multiplexer.get()) {}
 
     BaseServer(InetAddress address,
                std::shared_ptr<Multiplexer> multiplexer)
-        : _acceptor(&_looper, address),
-          _multiplexer(std::move(multiplexer)),
-          _isOuterMultiplexer(true) {}
+        : _multiplexer(std::move(multiplexer)),
+          _isOuterMultiplexer(true),
+          _token(_multiplexer->token()),
+          _acceptor(&_looper, address),
+          _handler(_multiplexer.get()) {}
 
     BaseServer(InetAddress address,
                ConnectCallback connectCallback,
                MessageCallback messageCallback,
                CloseCallback   closeCallback)
-        : _acceptor(&_looper, address),
-          _multiplexer(std::make_shared<Multiplexer>()),
+        : _multiplexer(std::make_shared<Multiplexer>()),
           _isOuterMultiplexer(false),
-          _handler(std::move(connectCallback), std::move(messageCallback), std::move(closeCallback)) {}
+          _token(_multiplexer->token()),
+          _acceptor(&_looper, address),
+          _handler(_multiplexer.get(), std::move(connectCallback), std::move(messageCallback), std::move(closeCallback)) {}
 
     BaseServer(InetAddress address,
                std::shared_ptr<Multiplexer> multiplexer,
                ConnectCallback connectCallback,
                MessageCallback messageCallback,
                CloseCallback   closeCallback)
-        : _acceptor(&_looper, address),
-          _multiplexer(std::move(multiplexer)),
+        : _multiplexer(std::move(multiplexer)),
           _isOuterMultiplexer(true),
-          _handler(std::move(connectCallback), std::move(messageCallback), std::move(closeCallback)) {}
+          _token(_multiplexer->token()),
+          _acceptor(&_looper, address),
+          _handler(_multiplexer.get(), std::move(connectCallback), std::move(messageCallback), std::move(closeCallback)) {}
 
     ~BaseServer() = default;
     BaseServer(const BaseServer&) = delete;
@@ -108,17 +125,35 @@ public:
     BaseServer& operator=(BaseServer&&) = default;
 
 private:
+    void accept() {
+        if(_acceptor.accept()) {
+            std::pair<InetAddress, Socket> contextArguments = _acceptor.aceeptResult();
+            auto &address = contextArguments.first;
+            auto &socket = contextArguments.second;
+            _connections.emplace_back(
+                std::make_unique<std::pair<Multiplexer::Token, Context>>(
+                    _token, Context(&_looper, address, std::move(socket))));
+            Multiplexer::Bundle bundle = _connections.back().get();
+            _handler.handleStart(bundle);
+        }
+    }
+
+    void handle() {
+        _handler.handleEvents(_token);
+    }
+
+private:
     Looper _looper;
-    Acceptor _acceptor;
+
     std::shared_ptr<Multiplexer> _multiplexer;
     bool _isOuterMultiplexer;
-    bool _stop {false};
-    // ConnectCallback _connectCallback;
-    // MessageCallback _messageCallback;
-    // CloseCallback _closeCallback;
+    const Multiplexer::Token _token;
+
+    Acceptor _acceptor;
     HandlerType _handler;
-    // special case
-    std::vector<std::unique_ptr<std::pair<size_t, Context>>> _pools;
+    PoolType _connections;
+
+    bool _stop {false};
 };
 
 } // mutty

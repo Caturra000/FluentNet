@@ -11,7 +11,10 @@ namespace mutty {
 // no any looper?
 class Multiplexer {
 public:
-
+    using Token = size_t;
+    // must be pointer (epoll_event.data.ptr)
+    using Bundle = std::pair<Token, Context>*;
+public:
     void poll(std::chrono::milliseconds timeout) {
         int count = ::epoll_wait(_epollFd, _events.data(), _events.size(), timeout.count());
         if(count < 0) throw EpollWaitException(errno);
@@ -22,10 +25,17 @@ public:
     }
 
     void dispatchActiveContext(int count) {
+        // TODO remove
+        // for(int i = 0; i < count; ++i) {
+        //     auto ctx = static_cast<Context*>(_events[i].data.ptr);
+        //     auto revent = _events[i].events;
+        //     dispatch(ctx, revent);
+        // }
+
         for(int i = 0; i < count; ++i) {
-            auto ctx = static_cast<Context*>(_events[i].data.ptr);
-            auto revent = _events[i].events;
-            dispatch(ctx, revent);
+            // move to map by index
+            size_t index = static_cast<std::pair<Token, Context>*>(_events[i].data.ptr)->first;
+            _evnetVectors[index].emplace_back(_events[i]);
         }
     }
 
@@ -53,6 +63,15 @@ public:
         // }
     }
 
+    Token token() {
+        _evnetVectors.emplace_back();
+        return _token++;
+    }
+
+    std::vector<epoll_event>& visit(Token token) {
+        return _evnetVectors[token];
+    }
+
     Multiplexer()
         : _epollFd(::epoll_create1(EPOLL_CLOEXEC)),
           _events(16) {
@@ -71,6 +90,8 @@ public:
 private:
     int _epollFd;
     std::vector<epoll_event> _events;
+    std::vector<std::vector<epoll_event>> _evnetVectors;
+    Token _token {0};
 };
 
 }

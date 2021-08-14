@@ -36,7 +36,7 @@ public:
 
     Socket();
     ~Socket();
-    explicit Socket(int socketFd): _socketFd(socketFd) { assert(_socketFd != INVALID_FD); }
+    explicit Socket(int socketFd): _socketFd(socketFd) { /*assert(_socketFd != INVALID_FD);*/ }
     Socket(const Socket&) = delete;
     Socket(Socket &&rhs): _socketFd(rhs._socketFd) { rhs._socketFd = INVALID_FD; }
     Socket& operator=(const Socket&) = delete;
