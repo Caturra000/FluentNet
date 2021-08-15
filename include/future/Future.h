@@ -15,7 +15,7 @@ template <typename T>
 class Future {
 public:
     Future(Looper *looper,
-           const std::shared_ptr<ControlBlock<T>> &shared)
+           const SharedPtr<ControlBlock<T>> &shared)
         : _looper(looper),
           _shared(shared) {}
 
@@ -36,7 +36,7 @@ public:
     }
 
     // unsafe
-    std::shared_ptr<ControlBlock<T>> getControlBlock() {
+    SharedPtr<ControlBlock<T>> getControlBlock() {
         return _shared;
     }
 
@@ -249,7 +249,7 @@ private:
 
 private:
     Looper                           *_looper;
-    std::shared_ptr<ControlBlock<T>> _shared;
+    SharedPtr<ControlBlock<T>> _shared;
 };
 
 } // fluent

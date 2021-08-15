@@ -38,7 +38,7 @@ template <typename Fut, typename ...Futs>
 inline auto whenN(size_t n, Looper *looper, Fut &fut, Futs &...futs) {
     // assert(N <= 1 + sizeof...(futs));
     using T = typename FutureInner<Fut>::Type;
-    using ControlBlockType = std::shared_ptr<ControlBlock<T>>;
+    using ControlBlockType = SharedPtr<ControlBlock<T>>;
     using QueryPair = std::pair<size_t, ControlBlockType>;
     using ResultPair = std::pair<size_t, T>; // index and result
     using QueryVector = std::vector<QueryPair>;
@@ -63,7 +63,7 @@ inline auto whenN(size_t n, Looper *looper, Iterator first, Iterator last) {
     // assert(N <= 1 + sizeof...(futs));
     using Fut = typename Iterator::value_type;
     using T = typename FutureInner<Fut>::Type;
-    using ControlBlockType = std::shared_ptr<ControlBlock<T>>;
+    using ControlBlockType = SharedPtr<ControlBlock<T>>;
     using QueryPair = std::pair<size_t, ControlBlockType>;
     using ResultPair = std::pair<size_t, T>;
     using QueryVector = std::vector<QueryPair>;
@@ -84,7 +84,7 @@ inline auto whenNIf(size_t n, Looper *looper, Iterator first, Iterator last, Con
     // assert(N <= 1 + sizeof...(futs));
     using Fut = typename Iterator::value_type;
     using T = typename FutureInner<Fut>::Type;
-    using ControlBlockType = std::shared_ptr<ControlBlock<T>>;
+    using ControlBlockType = SharedPtr<ControlBlock<T>>;
     using QueryPair = std::pair<size_t, ControlBlockType>;
     using ResultPair = std::pair<size_t, T>;
     using QueryVector = std::vector<QueryPair>;

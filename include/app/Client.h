@@ -43,7 +43,7 @@ public:
     // connect group
     // future: in client loop
     Future<Context*> connect(InetAddress address) {
-        return future = _connector.connect(address)
+        return _connector.connect(address)
             .then([this](std::pair<InetAddress, Socket> &&contextArgs) {
                 auto &address = contextArgs.first;
                 auto &socket = contextArgs.second;

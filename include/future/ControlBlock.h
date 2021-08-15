@@ -3,6 +3,13 @@
 #include <bits/stdc++.h>
 namespace fluent {
 
+template <typename T>
+#ifdef __GNUC__
+using SharedPtr = std::__shared_ptr<T, __gnu_cxx::_S_single>;
+#else
+using SharedPtr = std::shared_ptr<T>;
+#endif
+
 enum class State {
     // newcomer, mengxin
     // it may have _then

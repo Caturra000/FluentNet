@@ -16,7 +16,11 @@ class Promise {
 public:
     explicit Promise(Looper *looper)
         : _looper(looper),
+#ifdef __GNUC__
+          _shared(std::__make_shared<ControlBlock<T>, std::_S_single>()) {}
+#else
           _shared(std::make_shared<ControlBlock<T>>()) {}
+#endif
 
     // T_: a forward type of T, just reuse the code
     // case:
@@ -66,7 +70,7 @@ private:
 
 private:
     Looper                           *_looper;
-    std::shared_ptr<ControlBlock<T>> _shared;
+    SharedPtr<ControlBlock<T>> _shared;
 };
 
 } // fluent
