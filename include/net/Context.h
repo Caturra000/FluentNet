@@ -13,8 +13,8 @@ namespace mutty {
 class Context /*: public std::enable_shared_from_this<Context>*/ {
 // friends
 public:
-    template <typename, typename, typename> friend class BaseServer;
     template <typename, typename, typename> friend class Handler;
+    friend class ConnectHandler;
 
 // networks
 public:
@@ -30,20 +30,22 @@ public:
     bool isDisConnecting() const { return _nState == NetworkState::DISCONNECTING; }
     bool isDisConnected() const { return _nState == NetworkState::DISCONNECTED; }
 
+    // A call shutdown and set DISCONNECTING ---> send FIN ---> B recv 0 ---> B handleClose ---> B shutdown and set DISCONNECTED
+    // B send FIN ---> A recv 0 ---> A handleClose ---> A DISCONNECTED
+    // if failed, A keeps DISCONNECTING? (B-side context not in epoll? crashed?)
     void shutdown() {
         if(_nState == NetworkState::CONNECTED) {
+            // dont care peer, DISCONNECTING can still handleClose
             _nState = NetworkState::DISCONNECTING;
+            // A can send FIN
+            // inner write flag will be turned off when handleClose
+            // but socket shutdown-WR inplace
+            // poll trigged -> buffer.writeTo -> ...
             if(_events & EVENT_WRITE) {
                 socket.shutdown();
             }
         }
     }
-
-    // void forceClose() {
-    //     if(_nState == NetworkState::CONNECTED || _nState == NetworkState::DISCONNECTING) {
-
-    //     }
-    // }
 
 public:
     Future<Context*> makeFuture() {
@@ -92,6 +94,7 @@ public:
         DELETED
     };
 
+    // TODO friend class
     using EpollOperationHint = uint;
     constexpr static EpollOperationHint EPOLL_CTL_NONE = 0;
 

@@ -5,7 +5,7 @@
 #include "../net/Context.h"
 #include "../net/Acceptor.h"
 #include "../net/Multiplexer.h"
-#include "../net/Handler.h"
+#include "../handler/Handler.h"
 namespace mutty {
 
 template <typename ConnectCallback,
@@ -60,14 +60,18 @@ public:
             if(!_isOuterMultiplexer) {
                 _multiplexer->poll(std::chrono::milliseconds::zero());
             }
-            handle();
             accept();
+            _handler.handleEvents(_token);
             _looper.loop();
         }
     }
 
-    void start() {
+    void ready() {
         _acceptor.start();
+    }
+
+    void stop() {
+        _stop = true;
     }
 
     void onConnect(ConnectCallback callback) {
@@ -134,12 +138,8 @@ private:
                 std::make_unique<std::pair<Multiplexer::Token, Context>>(
                     _token, Context(&_looper, address, std::move(socket))));
             Multiplexer::Bundle bundle = _connections.back().get();
-            _handler.handleStart(bundle);
+            _handler.handleNewContext(bundle);
         }
-    }
-
-    void handle() {
-        _handler.handleEvents(_token);
     }
 
 private:

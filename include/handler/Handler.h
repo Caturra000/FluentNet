@@ -1,15 +1,18 @@
-#ifndef __MUTTY_NET_HANDLER_H__
-#define __MUTTY_NET_HANDLER_H__
-#include "bits/stdc++.h"
-#include "../throws/Exceptions.h"
-#include "Context.h"
-#include "Multiplexer.h"
+#ifndef __MUTTY_HANDLER_HANDLER_H__
+#define __MUTTY_HANDLER_HANDLER_H__
+#include <bits/stdc++.h>
+#include "../net/Multiplexer.h"
+#include "../net/Context.h"
+#include "HandlerBase.h"
 namespace mutty {
 
 template <typename ConnectCallback,
           typename MessageCallback,
           typename CloseCallback>
-class Handler {
+class Handler
+    : public HandlerBase<Handler<ConnectCallback, MessageCallback, CloseCallback>,
+                         Multiplexer::Token,
+                         Multiplexer::Bundle> {
 public:
     using ConnectCallbackType = ConnectCallback;
     using MessageCallbackType = MessageCallback;
@@ -18,6 +21,34 @@ public:
     using Token = Multiplexer::Token;
     using Bundle = Multiplexer::Bundle;
 
+    using ThisType = Handler<ConnectCallback, MessageCallback, CloseCallback>;
+    using Base = HandlerBase<ThisType, Token, Bundle>;
+
+public:
+    // side effect: event vector .clear()
+    void handleEvents(Token token) {
+        auto &eventVector = _multiplexer->visit(token);
+        for(auto &event : eventVector) {
+            auto bundle = static_cast<Bundle>(event.data.ptr);
+            auto revent = event.events;
+            Base::handleEvent(bundle, revent);
+        }
+        eventVector.clear();
+    }
+
+    void handleNewContext(Bundle bundle) {
+        auto context = &bundle->second;
+        // assert CONNECTING
+        context->_nState = Context::NetworkState::CONNECTED;
+        context->enableRead();
+        Context::EpollOperationHint operation;
+        if((operation = context->updateEventState()) != Context::EPOLL_CTL_NONE) {
+            _multiplexer->update(operation, bundle);
+        }
+        _connectCallback(context);
+    }
+
+// require
 public:
     void handleRead(Bundle bundle) {
         auto context = &bundle->second;
@@ -33,16 +64,16 @@ public:
         }
     }
 
+    // eusure: write event
     void handleWrite(Bundle bundle) {
         auto context = &bundle->second;
         if(context->writeEventEnabled()) {
             ssize_t n = context->output.writeTo(context->socket.fd());
-            if(n > 0 && !context->output.unread()) {
+            if(n > 0 && context->output.unread() == 0) {
                 Context::EpollOperationHint operation;
                 if(context->disableWrite()
                         && (operation = context->updateEventState() != Context::EPOLL_CTL_NONE)) {
-                    // TODO
-                    // epoll->update(operation, context)
+                    _multiplexer->update(operation, bundle);
                 }
                 // writeComplete
             } else if(n < 0) {
@@ -51,6 +82,8 @@ public:
         }
     }
 
+    // connected/disconnecting -> disconnecting -> disconnected
+    // if call shutdown manually -> disconnecting
     void handleClose(Bundle bundle) {
         auto context = &bundle->second;
         if(context->isConnected() || context->isDisConnecting()) {
@@ -59,12 +92,10 @@ public:
             // shouble be DISCONNECTING
             context->disableRead();
             context->disableWrite();
-            // TODO epoll->update()
-
-            // _context->async([this, context] {
-            //     context->setDisConnected();
-            //     _closeCallback();
-            // });
+            Context::EpollOperationHint operation;
+            if((operation = context->updateEventState()) != Context::EPOLL_CTL_NONE) {
+                _multiplexer->update(operation, bundle);
+            }
             context->_nState = Context::NetworkState::DISCONNECTED;
             _closeCallback(context);
         }
@@ -82,43 +113,8 @@ public:
         }
     }
 
-    void handleStart(Bundle bundle) {
-        auto context = &bundle->second;
-        // assert CONNECTING
-        context->_nState = Context::NetworkState::CONNECTED;
-        context->enableRead();
-        // TODO poll update
-        Context::EpollOperationHint operation;
-
-        _connectCallback(context);
-    }
-
-    // side effect: event vector .clear()
-    void handleEvents(Token token) {
-        auto &eventVector = _multiplexer->visit(token);
-        for(auto &event : eventVector) {
-            Bundle bundle = static_cast<Bundle>(event.data.ptr);
-            auto revent = event.events;
-            handleEvent(bundle, revent);
-        }
-        eventVector.clear();
-    }
-
-    void handleEvent(Bundle bundle, uint32_t revent) {
-        if((revent & POLLHUP) && !(revent & POLLIN)) {
-            handleClose(bundle);
-        }
-        if(revent & (POLLERR | POLLNVAL)) {
-            handleError(bundle);
-        }
-        if(revent & (POLLIN | POLLPRI | POLLRDHUP)) {
-            handleRead(bundle);
-        }
-        if(revent & POLLOUT) {
-            handleWrite(bundle);
-        }
-    }
-
+// register
+public:
     void onConnect(ConnectCallback callback) {
         _connectCallback = std::move(callback);
     }
