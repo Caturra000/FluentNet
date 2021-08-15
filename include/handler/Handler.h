@@ -1,8 +1,8 @@
 #ifndef __MUTTY_HANDLER_HANDLER_H__
 #define __MUTTY_HANDLER_HANDLER_H__
 #include <bits/stdc++.h>
-#include "../net/Multiplexer.h"
-#include "../net/Context.h"
+#include "../network/Multiplexer.h"
+#include "../network/Context.h"
 #include "HandlerBase.h"
 namespace mutty {
 

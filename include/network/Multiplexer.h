@@ -1,5 +1,5 @@
-#ifndef __MUTTY_NET_MULTIPLEXER_H__
-#define __MUTTY_NET_MULTIPLEXER_H__
+#ifndef __MUTTY_NETWORK_MULTIPLEXER_H__
+#define __MUTTY_NETWORK_MULTIPLEXER_H__
 #include <unistd.h>
 #include <poll.h>
 #include <sys/epoll.h>

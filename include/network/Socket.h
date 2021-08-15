@@ -1,5 +1,5 @@
-#ifndef __MUTTY_NET_SOCKET_H__
-#define __MUTTY_NET_SOCKET_H__
+#ifndef __MUTTY_NETWORK_SOCKET_H__
+#define __MUTTY_NETWORK_SOCKET_H__
 #include <fcntl.h>
 #include <unistd.h>
 #include <netinet/in.h>

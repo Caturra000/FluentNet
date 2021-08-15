@@ -1,5 +1,5 @@
-#ifndef __MUTTY_NET_CONNECTOR_H__
-#define __MUTTY_NET_CONNECTOR_H__
+#ifndef __MUTTY_NETWORK_CONNECTOR_H__
+#define __MUTTY_NETWORK_CONNECTOR_H__
 #include <unistd.h>
 #include <sys/select.h>
 #include <netinet/in.h>

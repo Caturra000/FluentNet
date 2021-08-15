@@ -1,5 +1,5 @@
-#ifndef __MUTTY_NET_CONTEXT_H__
-#define __MUTTY_NET_CONTEXT_H__
+#ifndef __MUTTY_NETWORK_CONTEXT_H__
+#define __MUTTY_NETWORK_CONTEXT_H__
 #include <poll.h>
 #include <sys/epoll.h>
 #include <bits/stdc++.h>

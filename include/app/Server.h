@@ -2,9 +2,9 @@
 #define __MUTTY_APP_SERVER_H__
 #include <bits/stdc++.h>
 #include "../future/Futures.h"
-#include "../net/Context.h"
-#include "../net/Acceptor.h"
-#include "../net/Multiplexer.h"
+#include "../network/Context.h"
+#include "../network/Acceptor.h"
+#include "../network/Multiplexer.h"
 #include "../handler/Handler.h"
 namespace mutty {
 

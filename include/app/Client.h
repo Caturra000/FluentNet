@@ -2,8 +2,8 @@
 #define __MUTTY_APP_CLIENT_H__
 #include <bits/stdc++.h>
 #include "../future/Futures.h"
-#include "../net/Multiplexer.h"
-#include "../net/Connector.h"
+#include "../network/Multiplexer.h"
+#include "../network/Connector.h"
 #include "../handler/Handler.h"
 namespace mutty {
 

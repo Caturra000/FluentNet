@@ -1,5 +1,5 @@
-#ifndef __MUTTY_NET_BUFFER_H__
-#define __MUTTY_NET_BUFFER_H__
+#ifndef __MUTTY_NETWORK_BUFFER_H__
+#define __MUTTY_NETWORK_BUFFER_H__
 #include <sys/uio.h>
 #include <unistd.h>
 #include <bits/stdc++.h>

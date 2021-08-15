@@ -1,5 +1,5 @@
-#ifndef __MUTTY_NET_ACCEPTOR_H__
-#define __MUTTY_NET_ACCEPTOR_H__
+#ifndef __MUTTY_NETWORK_ACCEPTOR_H__
+#define __MUTTY_NETWORK_ACCEPTOR_H__
 #include <bits/stdc++.h>
 #include "../future/Futures.h"
 #include "InetAddress.h"
