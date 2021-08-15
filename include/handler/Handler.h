@@ -1,10 +1,10 @@
-#ifndef __MUTTY_HANDLER_HANDLER_H__
-#define __MUTTY_HANDLER_HANDLER_H__
+#ifndef __FLUENT_HANDLER_HANDLER_H__
+#define __FLUENT_HANDLER_HANDLER_H__
 #include <bits/stdc++.h>
 #include "../network/Multiplexer.h"
 #include "../network/Context.h"
 #include "HandlerBase.h"
-namespace mutty {
+namespace fluent {
 
 template <typename ConnectCallback,
           typename MessageCallback,
@@ -106,11 +106,11 @@ public:
 
 
     // TODO handleError(Context *context, const char *exceptionMessage) // dont use std::string, .c_str() is unsafe
-    // TODO MuttyException +std::string
+    // TODO FluentException +std::string
     void handleError(Bundle bundle) {
         auto context = &bundle->second;
         try {
-            throw MuttyException("error callback");
+            throw FluentException("error callback");
         } catch(...) {
             context->exception = std::current_exception();
         }
@@ -157,5 +157,5 @@ private:
     CloseCallback   _closeCallback;
 };
 
-} // mutty
+} // fluent
 #endif

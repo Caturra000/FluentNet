@@ -1,5 +1,5 @@
-#ifndef __MUTTY_NETWORK_CONTEXT_H__
-#define __MUTTY_NETWORK_CONTEXT_H__
+#ifndef __FLUENT_NETWORK_CONTEXT_H__
+#define __FLUENT_NETWORK_CONTEXT_H__
 #include <poll.h>
 #include <sys/epoll.h>
 #include <bits/stdc++.h>
@@ -8,7 +8,7 @@
 #include "InetAddress.h"
 #include "Socket.h"
 #include "Buffer.h"
-namespace mutty {
+namespace fluent {
 
 class Multiplexer;
 class Context /*: public std::enable_shared_from_this<Context>*/ {
@@ -49,7 +49,7 @@ public:
 
 public:
     Future<Context*> makeFuture() {
-        return mutty::makeFuture(looper, this);
+        return fluent::makeFuture(looper, this);
     }
 
     int fd() const { return socket.fd(); }
@@ -195,5 +195,5 @@ private:
 // for multiplexer END
 };
 
-} // mutty
+} // fluent
 #endif

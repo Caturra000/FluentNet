@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UITLS_DEFER_H__
-#define __MUTTY_UITLS_DEFER_H__
+#ifndef __FLUENT_UITLS_DEFER_H__
+#define __FLUENT_UITLS_DEFER_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 #ifdef __GNUC__
 class Defer: std::__shared_ptr<Defer, std::_S_single> {
@@ -15,5 +15,5 @@ public:
           (nullptr, [=](Defer*) { func(std::move(args)...); }) {}
 };
 
-} // mutty
+} // fluent
 #endif

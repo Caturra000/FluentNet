@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UTILS_TIMESTAMP_H__
-#define __MUTTY_UTILS_TIMESTAMP_H__
+#ifndef __FLUENT_UTILS_TIMESTAMP_H__
+#define __FLUENT_UTILS_TIMESTAMP_H__
 #include <chrono>
-namespace mutty {
+namespace fluent {
 
 // using std::chrono::system_clock;
 using namespace std::literals::chrono_literals;
@@ -18,5 +18,5 @@ inline Timestamp now() { return std::chrono::system_clock::now(); }
 inline Timestamp nowAfter(Nanosecond interval) { return now() + interval; }
 inline Timestamp nowBefore(Nanosecond interval) { return now() - interval; }
 
-} // mutty
+} // fluent
 #endif

@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UTILS_EXCHANGER_H__
-#define __MUTTY_UTILS_EXCHANGER_H__
+#ifndef __FLUENT_UTILS_EXCHANGER_H__
+#define __FLUENT_UTILS_EXCHANGER_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 class Exchanger final {
 public:
@@ -82,5 +82,5 @@ inline ValueType cast(const Exchanger &object) {
     return cast<const NonRef &>(const_cast<Exchanger&>(object));
 }
 
-} // mutty
+} // fluent
 #endif

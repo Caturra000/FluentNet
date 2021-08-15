@@ -1,7 +1,7 @@
-#ifndef __MUTTY_FUTURE_FUNCTION_TRAITS_H__
-#define __MUTTY_FUTURE_FUNCTION_TRAITS_H__
+#ifndef __FLUENT_FUTURE_FUNCTION_TRAITS_H__
+#define __FLUENT_FUTURE_FUNCTION_TRAITS_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 template <typename T>
 struct FunctionTraits;
@@ -28,5 +28,5 @@ struct FunctionTraits<Ret(C::*)(Args...) const>: public FunctionTraits<Ret(Args.
 template <typename Callable>
 struct FunctionTraits: public FunctionTraits<decltype(&Callable::operator())> {};
 
-} // mutty
+} // fluent
 #endif

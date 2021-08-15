@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UTILS_POINTER_H__
-#define __MUTTY_UTILS_POINTER_H__
+#ifndef __FLUENT_UTILS_POINTER_H__
+#define __FLUENT_UTILS_POINTER_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 // movable
 template <typename T>
@@ -38,6 +38,6 @@ inline Base* Pointer<T>::castTo() {
     return _ptr;
 }
 
-} // mutty
+} // fluent
 
 #endif

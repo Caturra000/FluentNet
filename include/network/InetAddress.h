@@ -1,10 +1,10 @@
-#ifndef __MUTTY_NETWORK_INET_ADDRESS_H__
-#define __MUTTY_NETWORK_INET_ADDRESS_H__
+#ifndef __FLUENT_NETWORK_INET_ADDRESS_H__
+#define __FLUENT_NETWORK_INET_ADDRESS_H__
 #include <unistd.h>
 #include <netinet/in.h>
 #include <string>
 #include "../utils/StringUtils.h"
-namespace mutty {
+namespace fluent {
 
 struct InetAddress {
 public:
@@ -54,6 +54,6 @@ inline uint32_t InetAddress::stringToIp(std::string s) const {
     return ip;
 }
 
-} // mutty
+} // fluent
 
 #endif

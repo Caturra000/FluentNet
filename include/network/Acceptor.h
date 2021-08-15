@@ -1,15 +1,15 @@
-#ifndef __MUTTY_NETWORK_ACCEPTOR_H__
-#define __MUTTY_NETWORK_ACCEPTOR_H__
+#ifndef __FLUENT_NETWORK_ACCEPTOR_H__
+#define __FLUENT_NETWORK_ACCEPTOR_H__
 #include <bits/stdc++.h>
 #include "../future/Futures.h"
 #include "InetAddress.h"
 #include "Socket.h"
-namespace mutty {
+namespace fluent {
 
 class Acceptor /*: public std::enable_shared_from_this<Acceptor>*/ {
 public:
     Future<Acceptor*> makeFuture() {
-        return mutty::makeFuture(_looper, this);
+        return fluent::makeFuture(_looper, this);
     }
 
     void start() {
@@ -65,5 +65,5 @@ private:
     Socket _lastBufferedSocket {Socket::INVALID_FD};
 };
 
-} // mutty
+} // fluent
 #endif

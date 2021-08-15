@@ -1,11 +1,11 @@
-#ifndef __MUTTY_NETWORK_BUFFER_H__
-#define __MUTTY_NETWORK_BUFFER_H__
+#ifndef __FLUENT_NETWORK_BUFFER_H__
+#define __FLUENT_NETWORK_BUFFER_H__
 #include <sys/uio.h>
 #include <unistd.h>
 #include <bits/stdc++.h>
 #include "Socket.h"
 #include "../utils/Algorithms.h"
-namespace mutty {
+namespace fluent {
 
 // TODO use small_vector
 class Buffer {
@@ -134,5 +134,5 @@ inline std::ostream& operator << (std::ostream &os, Buffer &buf) {
     return os;
 }
 
-} // mutty
+} // fluent
 #endif

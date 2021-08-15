@@ -1,12 +1,12 @@
-#ifndef __MUTTY_NETWORK_MULTIPLEXER_H__
-#define __MUTTY_NETWORK_MULTIPLEXER_H__
+#ifndef __FLUENT_NETWORK_MULTIPLEXER_H__
+#define __FLUENT_NETWORK_MULTIPLEXER_H__
 #include <unistd.h>
 #include <poll.h>
 #include <sys/epoll.h>
 #include <bits/stdc++.h>
 #include "../throws/Exceptions.h"
 #include "Context.h"
-namespace mutty {
+namespace fluent {
 
 // no any looper?
 class Multiplexer {

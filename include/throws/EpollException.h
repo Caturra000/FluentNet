@@ -1,11 +1,11 @@
-#ifndef __MUTTY_THROWS_EPOLL_EXCEPTION_H__
-#define __MUTTY_THROWS_EPOLL_EXCEPTION_H__
+#ifndef __FLUENT_THROWS_EPOLL_EXCEPTION_H__
+#define __FLUENT_THROWS_EPOLL_EXCEPTION_H__
 #include "ErrnoException.h"
-namespace mutty {
+namespace fluent {
 
 class EpollException: public ErrnoException {
     using ErrnoException::ErrnoException;
 };
 
-} // mutty
+} // fluent
 #endif

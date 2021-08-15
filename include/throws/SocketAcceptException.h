@@ -1,7 +1,7 @@
-#ifndef __MUTTY_THROWS_SOCKET_ACCEPT_EXCEPTION_H__
-#define __MUTTY_THROWS_SOCKET_ACCEPT_EXCEPTION_H__
+#ifndef __FLUENT_THROWS_SOCKET_ACCEPT_EXCEPTION_H__
+#define __FLUENT_THROWS_SOCKET_ACCEPT_EXCEPTION_H__
 #include "SocketException.h"
-namespace mutty {
+namespace fluent {
 
 class SocketAcceptException: public SocketException {
 public:
@@ -10,5 +10,5 @@ public:
     SocketAcceptException(int err): SocketException(TAG, err) {}
 };
 
-} // mutty
+} // fluent
 #endif

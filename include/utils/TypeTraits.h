@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UTILS_TYPE_TRAITS_H__
-#define __MUTTY_UTILS_TYPE_TRAITS_H__
+#ifndef __FLUENT_UTILS_TYPE_TRAITS_H__
+#define __FLUENT_UTILS_TYPE_TRAITS_H__
 #include <functional>
-namespace mutty {
+namespace fluent {
 
 // test:
 // void f(int a) {}
@@ -22,5 +22,5 @@ inline constexpr auto isCallable(F &&f, Args &&...args)
 template<typename ...Args>
 using IsCallableType = decltype(isCallable<Args...>);
 
-} // mutty
+} // fluent
 #endif

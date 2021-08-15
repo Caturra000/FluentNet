@@ -1,6 +1,6 @@
-#ifndef __MUTTY_UTILS_ALGORITHMS_H__
-#define __MUTTY_UTILS_ALGORITHMS_H__
-namespace mutty {
+#ifndef __FLUENT_UTILS_ALGORITHMS_H__
+#define __FLUENT_UTILS_ALGORITHMS_H__
+namespace fluent {
 
 auto roundToPowerOfTwo = [](int v)->int {
     v--;
@@ -48,5 +48,5 @@ inline T random() {
     return static_cast<T>(seed / 1024);
 }
 
-} // mutty
+} // fluent
 #endif

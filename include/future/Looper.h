@@ -1,5 +1,5 @@
-#ifndef __MUTTY_FUTURE_LOOPER_H__
-#define __MUTTY_FUTURE_LOOPER_H__
+#ifndef __FLUENT_FUTURE_LOOPER_H__
+#define __FLUENT_FUTURE_LOOPER_H__
 
 #define SKYWIND3000_CPU_LOOP_UNROLL_4X(actionx1, actionx2, actionx4, width) do { \
     unsigned long __width = (unsigned long)(width);    \
@@ -16,7 +16,7 @@
 
 #include <bits/stdc++.h>
 
-namespace mutty {
+namespace fluent {
 
 class Looper {
 public:
@@ -78,7 +78,7 @@ private:
     int                               _global {}; // debug
 };
 
-} // mutty
+} // fluent
 
 #undef CATURRA_16X
 #undef CATURRA_8X

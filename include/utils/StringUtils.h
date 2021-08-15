@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UTILS_STRING_UTILS_H__
-#define __MUTTY_UTILS_STRING_UTILS_H__
+#ifndef __FLUENT_UTILS_STRING_UTILS_H__
+#define __FLUENT_UTILS_STRING_UTILS_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 std::vector<std::pair<int, int>>
 inline split(const char *str, const char pivot = ' ') {
@@ -44,6 +44,6 @@ inline T toDec(const std::string &str) {
     return dec;
 }
 
-} // mutty
+} // fluent
 
 #endif

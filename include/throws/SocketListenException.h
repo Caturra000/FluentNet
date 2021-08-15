@@ -1,7 +1,7 @@
-#ifndef __MUTTY_THROWS_SOCKET_LISTEN_EXCEPTION_H__
-#define __MUTTY_THROWS_SOCKET_LISTEN_EXCEPTION_H__
+#ifndef __FLUENT_THROWS_SOCKET_LISTEN_EXCEPTION_H__
+#define __FLUENT_THROWS_SOCKET_LISTEN_EXCEPTION_H__
 #include "SocketException.h"
-namespace mutty {
+namespace fluent {
 
 class SocketListenException: public SocketException {
 public:
@@ -10,5 +10,5 @@ public:
     SocketListenException(int err): SocketException(TAG, err) {}
 };
 
-} // mutty
+} // fluent
 #endif

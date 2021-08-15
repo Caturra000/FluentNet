@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UTILS_FAST_IO_H__
-#define __MUTTY_UTILS_FAST_IO_H__
+#ifndef __FLUENT_UTILS_FAST_IO_H__
+#define __FLUENT_UTILS_FAST_IO_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 struct IoResult {
     const char *buf;
@@ -68,5 +68,5 @@ inline size_t FastIo<N>::strlen2() {
     return M-1;
 }
 
-} // mutty
+} // fluent
 #endif

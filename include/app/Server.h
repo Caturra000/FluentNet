@@ -1,12 +1,12 @@
-#ifndef __MUTTY_APP_SERVER_H__
-#define __MUTTY_APP_SERVER_H__
+#ifndef __FLUENT_APP_SERVER_H__
+#define __FLUENT_APP_SERVER_H__
 #include <bits/stdc++.h>
 #include "../future/Futures.h"
 #include "../network/Context.h"
 #include "../network/Acceptor.h"
 #include "../network/Multiplexer.h"
 #include "../handler/Handler.h"
-namespace mutty {
+namespace fluent {
 
 template <typename ConnectCallback,
           typename MessageCallback,
@@ -156,5 +156,5 @@ private:
     bool _stop {false};
 };
 
-} // mutty
+} // fluent
 #endif

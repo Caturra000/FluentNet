@@ -1,23 +1,23 @@
-#ifndef __MUTTY_THROWS_ERRNO_EXCEPTION_H__
-#define __MUTTY_THROWS_ERRNO_EXCEPTION_H__
+#ifndef __FLUENT_THROWS_ERRNO_EXCEPTION_H__
+#define __FLUENT_THROWS_ERRNO_EXCEPTION_H__
 #include <cstring>
-#include "MuttyException.h"
-namespace mutty {
+#include "FluentException.h"
+namespace fluent {
 
-class ErrnoException: public MuttyException {
+class ErrnoException: public FluentException {
 private:
     int _err {0}; // 暂存errno
     std::string _what;
 public:
     static constexpr const char *TAG = "errno exception";
-    using MuttyException::MuttyException;
+    using FluentException::FluentException;
     ErrnoException(const char *info, int err)
-        : MuttyException(info), _err(err), _what(std::string(info) + ' ' + strerror(_err)) {}
+        : FluentException(info), _err(err), _what(std::string(info) + ' ' + strerror(_err)) {}
     ErrnoException(int err): ErrnoException(TAG, err) {}
     int errorCode() { return _err; }
     const char* errorMessage() { return strerror(_err); }
     const char* what() const noexcept override { return _what.c_str(); }
 };
 
-} // mutty
+} // fluent
 #endif

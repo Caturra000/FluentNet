@@ -1,6 +1,6 @@
-#ifndef __MUTTY_UTILS_NON_COPYABLE_H__
-#define __MUTTY_UTILS_NON_COPYABLE_H__
-namespace mutty {
+#ifndef __FLUENT_UTILS_NON_COPYABLE_H__
+#define __FLUENT_UTILS_NON_COPYABLE_H__
+namespace fluent {
 
 class NonCopyable {
 public:
@@ -12,5 +12,5 @@ protected:
     ~NonCopyable() = default;
 };
 
-} // mutty
+} // fluent
 #endif

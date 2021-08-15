@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UTILS_WEAK_REFERENCE_H__
-#define __MUTTY_UTILS_WEAK_REFERENCE_H__
+#ifndef __FLUENT_UTILS_WEAK_REFERENCE_H__
+#define __FLUENT_UTILS_WEAK_REFERENCE_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 // GC interface with CRTP style
 // should implement reusable() / isResuable() / get()
@@ -51,5 +51,5 @@ inline void WeakReference<T, step>::updateReusableIndex() {
     }
 }
 
-} // mutty
+} // fluent
 #endif

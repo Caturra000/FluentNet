@@ -1,11 +1,11 @@
-#ifndef __MUTTY_THROWS_NETWORK_EXCEPTION_H__
-#define __MUTTY_THROWS_NETWORK_EXCEPTION_H__
+#ifndef __FLUENT_THROWS_NETWORK_EXCEPTION_H__
+#define __FLUENT_THROWS_NETWORK_EXCEPTION_H__
 #include "ErrnoException.h"
-namespace mutty {
+namespace fluent {
 
 class NetworkException: public ErrnoException {
     using ErrnoException::ErrnoException;
 };
 
-} // mutty
+} // fluent
 #endif

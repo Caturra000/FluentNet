@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UTILS_OBJECT_H__
-#define __MUTTY_UTILS_OBJECT_H__
+#ifndef __FLUENT_UTILS_OBJECT_H__
+#define __FLUENT_UTILS_OBJECT_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 class Object final {
 public:
@@ -88,5 +88,5 @@ inline ValueType cast(const Object &object) {
     return cast<const NonRef &>(const_cast<Object&>(object));
 }
 
-} // mutty
+} // fluent
 #endif

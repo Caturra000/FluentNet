@@ -1,9 +1,9 @@
-#ifndef __MUTTY_FUTURE_PROMISE_H__
-#define __MUTTY_FUTURE_PROMISE_H__
+#ifndef __FLUENT_FUTURE_PROMISE_H__
+#define __FLUENT_FUTURE_PROMISE_H__
 #include <bits/stdc++.h>
 #include "Looper.h"
 #include "ControlBlock.h"
-namespace mutty {
+namespace fluent {
 
 template <typename T>
 class Future;
@@ -69,5 +69,5 @@ private:
     std::shared_ptr<ControlBlock<T>> _shared;
 };
 
-} // mutty
+} // fluent
 #endif

@@ -1,8 +1,8 @@
-#ifndef __MUTTY_FUTURE_TRAITS_H__
-#define __MUTTY_FUTURE_TRAITS_H__
+#ifndef __FLUENT_FUTURE_TRAITS_H__
+#define __FLUENT_FUTURE_TRAITS_H__
 #include <bits/stdc++.h>
 #include "FunctionTraits.h"
-namespace mutty {
+namespace fluent {
 
 // forward
 template <typename T>
@@ -78,5 +78,5 @@ struct ThenArgumentTraitsConvert<T&&> {
     using Type = T&&;
 };
 
-} // mutty
+} // fluent
 #endif

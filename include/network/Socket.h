@@ -1,5 +1,5 @@
-#ifndef __MUTTY_NETWORK_SOCKET_H__
-#define __MUTTY_NETWORK_SOCKET_H__
+#ifndef __FLUENT_NETWORK_SOCKET_H__
+#define __FLUENT_NETWORK_SOCKET_H__
 #include <fcntl.h>
 #include <unistd.h>
 #include <netinet/in.h>
@@ -9,7 +9,7 @@
 #include <bits/stdc++.h>
 #include "InetAddress.h"
 #include "../throws/Exceptions.h"
-namespace mutty {
+namespace fluent {
 
 class Socket {
 public:
@@ -151,6 +151,6 @@ inline Socket::operator int() && {
     return fd;
 }
 
-} // mutty
+} // fluent
 
 #endif

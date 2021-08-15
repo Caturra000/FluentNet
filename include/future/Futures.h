@@ -1,10 +1,10 @@
-#ifndef __MUTTY_FUTURE_FUTURES_H__
-#define __MUTTY_FUTURE_FUTURES_H__
+#ifndef __FLUENT_FUTURE_FUTURES_H__
+#define __FLUENT_FUTURE_FUTURES_H__
 #include <bits/stdc++.h>
 #include "Future.h"
 #include "Promise.h"
 #include "FuturesInternal.h"
-namespace mutty {
+namespace fluent {
 
 template <typename ...Args, typename Tuple = std::tuple<std::decay_t<Args>...>>
 inline Future<Tuple> makeTupleFuture(Looper *looper, Args &&...args) {
@@ -135,5 +135,5 @@ inline auto whenAnyIf(Looper *looper, Iterator first, Iterator last, Condition &
         });
 }
 
-} // mutty
+} // fluent
 #endif

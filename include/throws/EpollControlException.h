@@ -1,7 +1,7 @@
-#ifndef __MUTTY_THROWS_EPOLL_CONTROL_EXCEPTION_H__
-#define __MUTTY_THROWS_EPOLL_CONTROL_EXCEPTION_H__
+#ifndef __FLUENT_THROWS_EPOLL_CONTROL_EXCEPTION_H__
+#define __FLUENT_THROWS_EPOLL_CONTROL_EXCEPTION_H__
 #include "EpollException.h"
-namespace mutty {
+namespace fluent {
 
 class EpollControlException: public EpollException {
 public:
@@ -10,5 +10,5 @@ public:
     EpollControlException(int err): EpollException(TAG, err) {}
 };
 
-} // mutty
+} // fluent
 #endif

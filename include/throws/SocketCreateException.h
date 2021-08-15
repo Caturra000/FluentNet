@@ -1,7 +1,7 @@
-#ifndef __MUTTY_THROWS_SOCKET_CREATE_EXCEPTION_H__
-#define __MUTTY_THROWS_SOCKET_CREATE_EXCEPTION_H__
+#ifndef __FLUENT_THROWS_SOCKET_CREATE_EXCEPTION_H__
+#define __FLUENT_THROWS_SOCKET_CREATE_EXCEPTION_H__
 #include "SocketException.h"
-namespace mutty {
+namespace fluent {
 
 class SocketCreateException: public SocketException {
 public:
@@ -11,5 +11,5 @@ public:
         : SocketException(TAG, err) {}
 };
 
-} // mutty
+} // fluent
 #endif

@@ -1,7 +1,7 @@
-#ifndef __MUTTY_V3_FUTURE_CONTROL_BLOCK_H__
-#define __MUTTY_V3_FUTURE_CONTROL_BLOCK_H__
+#ifndef __FLUENT_V3_FUTURE_CONTROL_BLOCK_H__
+#define __FLUENT_V3_FUTURE_CONTROL_BLOCK_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 enum class State {
     // newcomer, mengxin
@@ -36,5 +36,5 @@ struct ControlBlock {
     ControlBlock(): _state(State::NEW) {}
 };
 
-} // mutty
+} // fluent
 #endif

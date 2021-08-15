@@ -1,9 +1,9 @@
-#ifndef __MUTTY_FUTURE_FUTURES_INTERNAL_H__
-#define __MUTTY_FUTURE_FUTURES_INTERNAL_H__
+#ifndef __FLUENT_FUTURE_FUTURES_INTERNAL_H__
+#define __FLUENT_FUTURE_FUTURES_INTERNAL_H__
 #include "bits/stdc++.h"
 #include "Future.h"
 #include "Promise.h"
-namespace mutty {
+namespace fluent {
 namespace details {
 
 template <typename Tuple>
@@ -116,5 +116,5 @@ inline auto whenNTemplate(size_t n, Looper *looper, QueryVectorForward &&queries
 }
 
 } // details
-} // mutty
+} // fluent
 #endif

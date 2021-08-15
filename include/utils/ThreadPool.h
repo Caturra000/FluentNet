@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UTILS_THREAD_POOL_H__
-#define __MUTTY_UTILS_THREAD_POOL_H__
+#ifndef __FLUENT_UTILS_THREAD_POOL_H__
+#define __FLUENT_UTILS_THREAD_POOL_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 class ThreadPool {
 public:
@@ -64,5 +64,5 @@ inline void ThreadPool::run() {
     }}.detach();
 }
 
-} // mutty
+} // fluent
 #endif

@@ -1,5 +1,5 @@
-#ifndef __MUTTY_NETWORK_CONNECTOR_H__
-#define __MUTTY_NETWORK_CONNECTOR_H__
+#ifndef __FLUENT_NETWORK_CONNECTOR_H__
+#define __FLUENT_NETWORK_CONNECTOR_H__
 #include <unistd.h>
 #include <sys/select.h>
 #include <netinet/in.h>
@@ -8,12 +8,12 @@
 #include "InetAddress.h"
 #include "Socket.h"
 // #include "Multiplexer.h"
-namespace mutty {
+namespace fluent {
 
 class Connector {
 public:
     Future<Connector*> makeFuture() {
-        return mutty::makeFuture(_looper, this);
+        return fluent::makeFuture(_looper, this);
     }
 
     Future<std::pair<InetAddress, Socket>> connect(const InetAddress /*server*/&address) {
@@ -84,5 +84,5 @@ private:
     Looper *_looper;
 };
 
-} // mutty
+} // fluent
 #endif

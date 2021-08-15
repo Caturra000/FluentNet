@@ -1,7 +1,7 @@
-#ifndef __MUTTY_THROWS_SOCKET_EXCEPTION_H__
-#define __MUTTY_THROWS_SOCKET_EXCEPTION_H__
+#ifndef __FLUENT_THROWS_SOCKET_EXCEPTION_H__
+#define __FLUENT_THROWS_SOCKET_EXCEPTION_H__
 #include "NetworkException.h"
-namespace mutty {
+namespace fluent {
 
 class SocketException: public NetworkException {
 public:
@@ -10,5 +10,5 @@ public:
     SocketException(int err): NetworkException(TAG, err) {}
 };
 
-} // mutty
+} // fluent
 #endif

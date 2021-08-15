@@ -1,7 +1,7 @@
-#ifndef __MUTTY_UTILS_CALLABLE_H__
-#define __MUTTY_UTILS_CALLABLE_H__
+#ifndef __FLUENT_UTILS_CALLABLE_H__
+#define __FLUENT_UTILS_CALLABLE_H__
 #include <bits/stdc++.h>
-namespace mutty {
+namespace fluent {
 
 class Callable {
 public:
@@ -26,5 +26,5 @@ protected:
     Functor _functor;
 };
 
-} // mutty
+} // fluent
 #endif

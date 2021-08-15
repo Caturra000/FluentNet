@@ -1,7 +1,7 @@
-#ifndef __MUTTY_THROWS_EXCEPTIONS_H__
-#define __MUTTY_THROWS_EXCEPTIONS_H__
+#ifndef __FLUENT_THROWS_EXCEPTIONS_H__
+#define __FLUENT_THROWS_EXCEPTIONS_H__
 
-#include "MuttyException.h"
+#include "FluentException.h"
     #include "ErrnoException.h"
         #include "NetworkException.h"
             #include "SocketException.h"
