@@ -38,6 +38,9 @@ public:
 
     void handleNewContext(Bundle bundle) {
         auto context = &bundle->second;
+        // ensure
+        context->_multiplexer = _multiplexer;
+        context->_bundle = bundle;
         // assert CONNECTING
         context->_nState = Context::NetworkState::CONNECTED;
         context->enableRead();
@@ -72,7 +75,7 @@ public:
             if(n > 0 && context->output.unread() == 0) {
                 Context::EpollOperationHint operation;
                 if(context->disableWrite()
-                        && (operation = context->updateEventState() != Context::EPOLL_CTL_NONE)) {
+                        && ((operation = context->updateEventState()) != Context::EPOLL_CTL_NONE)) {
                     _multiplexer->update(operation, bundle);
                 }
                 // writeComplete

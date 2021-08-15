@@ -37,7 +37,12 @@ public:
         uint32_t events = context->events();
         epoll_event event {events, bundle};
         if(::epoll_ctl(_epollFd, operation, fd, &event)) {
-            throw EpollControlException(errno);
+            try {
+                throw EpollControlException(errno);
+            } catch(...) {
+                // Log...
+                context->exception = std::current_exception();
+            }
         }
     }
 
@@ -71,6 +76,10 @@ private:
     std::vector<std::vector<epoll_event>> _evnetVectors;
     Token _token {0};
 };
+
+inline void Context::updateMultiplexer(Context::EpollOperationHint hint) {
+    _multiplexer->update(hint, _bundle);
+}
 
 }
 #endif

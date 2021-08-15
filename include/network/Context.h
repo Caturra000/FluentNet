@@ -10,11 +10,11 @@
 #include "Buffer.h"
 namespace mutty {
 
+class Multiplexer;
 class Context /*: public std::enable_shared_from_this<Context>*/ {
 // friends
 public:
     template <typename, typename, typename> friend class Handler;
-    friend class ConnectHandler;
 
 // networks
 public:
@@ -152,6 +152,27 @@ public:
         return false;
     }
 
+    void send(const void *buf, size_t n) {
+        if(_nState != NetworkState::DISCONNECTING || _nState != NetworkState::DISCONNECTED) {
+            output.append(static_cast<const char *>(buf), n);
+            if(!(_events & EVENT_WRITE)) {
+                _events |= EVENT_WRITE;
+                auto hint = updateEventState();
+                updateMultiplexer(hint);
+                // will disable write when buf.unread == 0 (handleWrite)
+            }
+        }
+    }
+
+    template <size_t N>
+    void send(const char (&buf)[N]) {
+        send(buf, N-1); // '\0'
+    }
+
+    void send(const std::string &str) {
+        send(str.c_str(), str.size());
+    }
+
 private:
     EventBitmap _events {EVENT_NONE};
     EventState _eState {EventState::NEW};
@@ -162,6 +183,14 @@ private:
                       && EPOLL_CTL_NONE != EPOLL_CTL_MOD,
                       "check EPOLL_CTL_NONE");
     }
+
+    // ugly...
+    Multiplexer *_multiplexer;
+    std::pair<size_t, Context> *_bundle;
+
+    // ensure: handle init
+    // limit: called by send
+    void updateMultiplexer(EpollOperationHint hint);
 
 // for multiplexer END
 };
