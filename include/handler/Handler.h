@@ -31,12 +31,19 @@ public:
         for(auto &event : eventVector) {
             auto bundle = static_cast<Bundle>(event.data.ptr);
             auto revent = event.events;
-            Base::handleEvent(bundle, revent);
+            try {
+                Base::handleEvent(bundle, revent);
+            } catch(...) {
+                // Log...
+                auto context = &bundle->second;
+                context->exception = std::current_exception();
+                // TODO _exceptionCallback(context);
+            }
         }
         eventVector.clear();
     }
 
-    void handleNewContext(Bundle bundle) {
+    void handleNewContext(Bundle bundle) try {
         auto context = &bundle->second;
         // ensure
         context->_multiplexer = _multiplexer;
@@ -49,6 +56,11 @@ public:
             _multiplexer->update(operation, bundle);
         }
         _connectCallback(context);
+    } catch(...) {
+        // Log...
+        auto context = &bundle->second;
+        context->exception = std::current_exception();
+        // TODO _exceptionCallback(context);
     }
 
 // require
@@ -108,12 +120,17 @@ public:
     // TODO handleError(Context *context, const char *exceptionMessage) // dont use std::string, .c_str() is unsafe
     // TODO FluentException +std::string
     void handleError(Bundle bundle) {
-        auto context = &bundle->second;
-        try {
-            throw FluentException("error callback");
-        } catch(...) {
-            context->exception = std::current_exception();
-        }
+        // auto context = &bundle->second;
+        // try {
+        //     throw FluentException("error callback");
+        // } catch(...) {
+        //     context->exception = std::current_exception();
+        // }
+        throw FluentException("error callback");
+    }
+
+    void handleError(Bundle bundle, const char *errorMessage) {
+        throw FluentException(errorMessage);
     }
 
 // register
