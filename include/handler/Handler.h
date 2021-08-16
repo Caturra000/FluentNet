@@ -91,8 +91,12 @@ public:
                     _multiplexer->update(operation, bundle);
                 }
                 // writeComplete
+                // FIXME latency
+                context->_sendCompleteCounter += context->_readyToCompleteCounter;
+                context->_readyToCompleteCounter = 0;
             } else if(n < 0) {
                 // warn
+                // TODO n >= 0
             }
         }
     }

@@ -55,6 +55,68 @@ public:
 
     int fd() const { return socket.fd(); }
 
+    void send(const void *buf, size_t n) {
+        if(_nState != NetworkState::DISCONNECTING || _nState != NetworkState::DISCONNECTED) {
+            // TODO add socket.write() and remove exception in context
+            int ret = ::write(socket.fd(), buf, n);
+            // TODO confirm wirte-complete
+            // TODO futureSend, return Future<...>
+            if(ret == n) {
+                _sendCompleteCounter++;
+                return; // fast return
+            }
+            if(ret < 0) {
+                switch(errno) {
+                    case EAGAIN:
+                    case EINTR:
+                        ret = 0;
+                    break;
+                    default:
+                        // Log...
+                        // caught by handler
+                        throw WriteException(errno);
+                        // or no throw?
+                        // future is hard to catch exception (try-catch everytime)
+                        // TODO add futureSend interface
+                    break;
+                }
+            }
+            // ret >= 0
+            // TODO submit request to buffer with readyFlag and vector
+            output.append(static_cast<const char *>(buf) + ret, n - ret);
+            _readyToCompleteCounter++;
+            if(!(_events & EVENT_WRITE)) {
+                _events |= EVENT_WRITE;
+                // TODO remove this ugly code, use handler when any callback
+                auto hint = updateEventState();
+                updateMultiplexer(hint);
+                // will disable write when buf.unread == 0 (handleWrite)
+            }
+        }
+    }
+
+    template <size_t N>
+    void send(const char (&buf)[N]) {
+        send(buf, N-1); // '\0'
+    }
+
+    void send(const std::string &str) {
+        send(str.c_str(), str.size());
+    }
+
+    // for future.poll
+    bool sendCompleteTestAndSet() {
+        if(_sendCompleteCounter) {
+            _sendCompleteCounter--;
+            return true;
+        }
+        return false;
+    }
+
+    bool sendComplete() {
+        return _sendCompleteCounter;
+    }
+
     Context(Looper *looper, const InetAddress &address, Socket &&socket)
         : looper(looper),
           address(address),
@@ -80,6 +142,10 @@ public:
 // modified by friend
 private:
     NetworkState _nState {NetworkState::CONNECTING};
+
+    // for complete callback and future
+    size_t _sendCompleteCounter {0};
+    size_t _readyToCompleteCounter {0};
 
 // for multiplexer START
 // TODO class
@@ -153,44 +219,6 @@ public:
         return false;
     }
 
-    void send(const void *buf, size_t n) {
-        if(_nState != NetworkState::DISCONNECTING || _nState != NetworkState::DISCONNECTED) {
-            int ret = ::write(socket.fd(), buf, n);
-            // TODO confirm wirte-complete
-            // TODO futureSend, return Future<...>
-            if(ret == n) return; // fast return
-            if(ret < 0) {
-                switch(errno) {
-                    case EAGAIN:
-                    case EINTR:
-                        ret = 0;
-                    break;
-                    default:
-                        throw WriteException(errno);
-                        // LOG...
-                        // or no throw?
-                    break;
-                }
-            }
-            // ret >= 0
-            output.append(static_cast<const char *>(buf) + ret, n - ret);
-            if(!(_events & EVENT_WRITE)) {
-                _events |= EVENT_WRITE;
-                auto hint = updateEventState();
-                updateMultiplexer(hint);
-                // will disable write when buf.unread == 0 (handleWrite)
-            }
-        }
-    }
-
-    template <size_t N>
-    void send(const char (&buf)[N]) {
-        send(buf, N-1); // '\0'
-    }
-
-    void send(const std::string &str) {
-        send(str.c_str(), str.size());
-    }
 
 private:
     EventBitmap _events {EVENT_NONE};
