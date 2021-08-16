@@ -17,7 +17,10 @@ public:
 public:
     void poll(std::chrono::milliseconds timeout) {
         int count = ::epoll_wait(_epollFd, _events.data(), _events.size(), timeout.count());
-        if(count < 0) throw EpollWaitException(errno);
+        if(count < 0) {
+            if(errno == EINTR) return;
+            throw EpollWaitException(errno);
+        }
         dispatchActiveContext(count);
         if(_events.size() == count) {
             _events.reserve(_events.size() << 1);
@@ -42,6 +45,8 @@ public:
             } catch(...) {
                 // Log...
                 context->exception = std::current_exception();
+                // TODO update return bool and onException(...) in handler
+                // or no try-catch here, any throw will be caught by handler
             }
         }
     }
