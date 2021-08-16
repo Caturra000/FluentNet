@@ -1,5 +1,6 @@
 #ifndef __FLUENT_NETWORK_CONTEXT_H__
 #define __FLUENT_NETWORK_CONTEXT_H__
+#include <unistd.h>
 #include <poll.h>
 #include <sys/epoll.h>
 #include <bits/stdc++.h>
@@ -154,7 +155,25 @@ public:
 
     void send(const void *buf, size_t n) {
         if(_nState != NetworkState::DISCONNECTING || _nState != NetworkState::DISCONNECTED) {
-            output.append(static_cast<const char *>(buf), n);
+            int ret = ::write(socket.fd(), buf, n);
+            // TODO confirm wirte-complete
+            // TODO futureSend, return Future<...>
+            if(ret == n) return; // fast return
+            if(ret < 0) {
+                switch(errno) {
+                    case EAGAIN:
+                    case EINTR:
+                        ret = 0;
+                    break;
+                    default:
+                        throw WriteException(errno);
+                        // LOG...
+                        // or no throw?
+                    break;
+                }
+            }
+            // ret >= 0
+            output.append(static_cast<const char *>(buf) + ret, n - ret);
             if(!(_events & EVENT_WRITE)) {
                 _events |= EVENT_WRITE;
                 auto hint = updateEventState();
