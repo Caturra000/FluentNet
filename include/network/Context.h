@@ -57,31 +57,16 @@ public:
 
     void send(const void *buf, size_t n) {
         if(_nState != NetworkState::DISCONNECTING || _nState != NetworkState::DISCONNECTED) {
-            // TODO add socket.write() and remove exception in context
-            int ret = ::write(socket.fd(), buf, n);
+            ssize_t ret = socket.write(buf, n);
+
+            // assert(ret >= 0);
+
             // TODO confirm wirte-complete
             // TODO futureSend, return Future<...>
             if(ret == n) {
                 _sendCompleteCounter++;
                 return; // fast return
             }
-            if(ret < 0) {
-                switch(errno) {
-                    case EAGAIN:
-                    case EINTR:
-                        ret = 0;
-                    break;
-                    default:
-                        // Log...
-                        // caught by handler
-                        throw WriteException(errno);
-                        // or no throw?
-                        // future is hard to catch exception (try-catch everytime)
-                        // TODO add futureSend interface
-                    break;
-                }
-            }
-            // ret >= 0
             // TODO submit request to buffer with readyFlag and vector
             output.append(static_cast<const char *>(buf) + ret, n - ret);
             _readyToCompleteCounter++;

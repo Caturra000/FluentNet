@@ -119,11 +119,17 @@ inline ssize_t Buffer::readFrom(int fd) {
 inline ssize_t Buffer::writeTo(int fd) {
     ssize_t n = ::write(fd, readBuffer(), unread());
     if(n < 0) {
-        // warn
-        return n;
+        switch(errno) {
+            case EAGAIN:
+            case EINTR:
+                n = 0;
+            break;
+            default:
+                throw WriteException(errno);
+            break;
+        }
     }
     hasRead(n);
-    // n < 0 !EAGAIN throw
     return n;
 }
 

@@ -30,6 +30,8 @@ public:
     void setBlock();
     void setNonBlock();
 
+    ssize_t write(const void *buf, size_t n);
+
     void swap(Socket &that) { std::swap(this->_socketFd, that._socketFd); }
 
     static constexpr int INVALID_FD = -1;
@@ -125,6 +127,26 @@ inline void Socket::setBlock() {
 inline void Socket::setNonBlock() {
     int flags = ::fcntl(_socketFd, F_GETFL, 0);
     ::fcntl(_socketFd, F_SETFL, flags | SOCK_NONBLOCK);
+}
+
+inline ssize_t Socket::write(const void *buf, size_t n) {
+    ssize_t ret = ::write(_socketFd, buf, n);
+    if(ret < 0) {
+        switch(errno) {
+            case EAGAIN:
+            case EINTR:
+                ret = 0;
+            break;
+            default:
+                // Log...
+                throw SocketException(errno);
+                // or no throw?
+                // future is hard to catch exception (try-catch everytime)
+                // TODO add futureSend interface
+            break;
+        }
+    }
+    return ret;
 }
 
 inline Socket::Socket()
