@@ -55,73 +55,27 @@ public:
     using PoolType = std::vector<std::unique_ptr<std::pair<Multiplexer::Token, Context>>>;
 
 public:
-    void run() {
-        for(; !_stop; ) {
-            if(!_isOuterMultiplexer) {
-                _multiplexer->poll(std::chrono::milliseconds::zero());
-            }
-            accept();
-            _handler.handleEvents(_token);
-            _looper.loop();
-        }
-    }
+    void run();
 
-    void ready() {
-        _acceptor.start();
-    }
+    void ready() { _acceptor.start(); }
+    void stop() { _stop = true; }
 
-    void stop() {
-        _stop = true;
-    }
+    void onConnect(ConnectCallback callback) { _handler.onConnect(std::move(callback)); }
+    void onMessage(MessageCallback callback) { _handler.onMessage(std::move(callback)); }
+    void onClose(CloseCallback callback) { _handler.onClose(std::move(callback)); }
 
-    void onConnect(ConnectCallback callback) {
-        _handler.onConnect(std::move(callback));
-    }
-
-    void onMessage(MessageCallback callback) {
-        _handler.onMessage(std::move(callback));
-    }
-
-    void onClose(CloseCallback callback) {
-        _handler.onClose(std::move(callback));
-    }
-
-    BaseServer(InetAddress address)
-        : _multiplexer(std::make_shared<Multiplexer>()),
-          _isOuterMultiplexer(false),
-          _token(_multiplexer->token()),
-          _acceptor(&_looper, address),
-          _handler(_multiplexer.get()) {}
-
+    BaseServer(InetAddress address);
     BaseServer(InetAddress address,
-               std::shared_ptr<Multiplexer> multiplexer)
-        : _multiplexer(std::move(multiplexer)),
-          _isOuterMultiplexer(true),
-          _token(_multiplexer->token()),
-          _acceptor(&_looper, address),
-          _handler(_multiplexer.get()) {}
-
+               std::shared_ptr<Multiplexer> multiplexer);
     BaseServer(InetAddress address,
                ConnectCallback connectCallback,
                MessageCallback messageCallback,
-               CloseCallback   closeCallback)
-        : _multiplexer(std::make_shared<Multiplexer>()),
-          _isOuterMultiplexer(false),
-          _token(_multiplexer->token()),
-          _acceptor(&_looper, address),
-          _handler(_multiplexer.get(), std::move(connectCallback), std::move(messageCallback), std::move(closeCallback)) {}
-
+               CloseCallback   closeCallback);
     BaseServer(InetAddress address,
                std::shared_ptr<Multiplexer> multiplexer,
                ConnectCallback connectCallback,
                MessageCallback messageCallback,
-               CloseCallback   closeCallback)
-        : _multiplexer(std::move(multiplexer)),
-          _isOuterMultiplexer(true),
-          _token(_multiplexer->token()),
-          _acceptor(&_looper, address),
-          _handler(_multiplexer.get(), std::move(connectCallback), std::move(messageCallback), std::move(closeCallback)) {}
-
+               CloseCallback   closeCallback);
     ~BaseServer() = default;
     BaseServer(const BaseServer&) = delete;
     BaseServer(BaseServer&&) = default;
@@ -129,18 +83,7 @@ public:
     BaseServer& operator=(BaseServer&&) = default;
 
 private:
-    void accept() {
-        if(_acceptor.accept()) {
-            std::pair<InetAddress, Socket> contextArguments = _acceptor.aceeptResult();
-            auto &address = contextArguments.first;
-            auto &socket = contextArguments.second;
-            _connections.emplace_back(
-                std::make_unique<std::pair<Multiplexer::Token, Context>>(
-                    _token, Context(&_looper, address, std::move(socket))));
-            Multiplexer::Bundle bundle = _connections.back().get();
-            _handler.handleNewContext(bundle);
-        }
-    }
+    void accept();
 
 private:
     Looper _looper;
@@ -155,6 +98,76 @@ private:
 
     bool _stop {false};
 };
+
+template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
+inline void BaseServer<ConnectCallback, MessageCallback, CloseCallback>::run() {
+    for(; !_stop; ) {
+        if(!_isOuterMultiplexer) {
+            _multiplexer->poll(std::chrono::milliseconds::zero());
+        }
+        accept();
+        _handler.handleEvents(_token);
+        _looper.loop();
+    }
+}
+
+template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
+inline BaseServer<ConnectCallback, MessageCallback, CloseCallback>::
+BaseServer(InetAddress address)
+    : _multiplexer(std::make_shared<Multiplexer>()),
+      _isOuterMultiplexer(false),
+      _token(_multiplexer->token()),
+      _acceptor(&_looper, address),
+      _handler(_multiplexer.get()) {}
+
+template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
+inline BaseServer<ConnectCallback, MessageCallback, CloseCallback>::
+BaseServer(InetAddress address,
+           std::shared_ptr<Multiplexer> multiplexer)
+    : _multiplexer(std::move(multiplexer)),
+      _isOuterMultiplexer(true),
+      _token(_multiplexer->token()),
+      _acceptor(&_looper, address),
+      _handler(_multiplexer.get()) {}
+
+template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
+inline BaseServer<ConnectCallback, MessageCallback, CloseCallback>::
+BaseServer(InetAddress address,
+           ConnectCallback connectCallback,
+           MessageCallback messageCallback,
+           CloseCallback   closeCallback)
+    : _multiplexer(std::make_shared<Multiplexer>()),
+      _isOuterMultiplexer(false),
+      _token(_multiplexer->token()),
+      _acceptor(&_looper, address),
+      _handler(_multiplexer.get(), std::move(connectCallback), std::move(messageCallback), std::move(closeCallback)) {}
+
+template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
+inline BaseServer<ConnectCallback, MessageCallback, CloseCallback>::
+BaseServer(InetAddress address,
+          std::shared_ptr<Multiplexer> multiplexer,
+          ConnectCallback connectCallback,
+          MessageCallback messageCallback,
+          CloseCallback   closeCallback)
+    : _multiplexer(std::move(multiplexer)),
+      _isOuterMultiplexer(true),
+      _token(_multiplexer->token()),
+      _acceptor(&_looper, address),
+      _handler(_multiplexer.get(), std::move(connectCallback), std::move(messageCallback), std::move(closeCallback)) {}
+
+template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
+inline void BaseServer<ConnectCallback, MessageCallback, CloseCallback>::accept() {
+    if(_acceptor.accept()) {
+        std::pair<InetAddress, Socket> contextArguments = _acceptor.aceeptResult();
+        auto &address = contextArguments.first;
+        auto &socket = contextArguments.second;
+        _connections.emplace_back(
+            std::make_unique<std::pair<Multiplexer::Token, Context>>(
+                _token, Context(&_looper, address, std::move(socket))));
+        Multiplexer::Bundle bundle = _connections.back().get();
+        _handler.handleNewContext(bundle);
+    }
+}
 
 } // fluent
 #endif

@@ -8,50 +8,24 @@ namespace fluent {
 
 class Acceptor /*: public std::enable_shared_from_this<Acceptor>*/ {
 public:
-    Future<Acceptor*> makeFuture() {
-        return fluent::makeFuture(_looper, this);
-    }
+    Future<Acceptor*> makeFuture() { return fluent::makeFuture(_looper, this); }
 
-    void start() {
-        _listenDescriptor.listen();
-    }
+    void start() { _listenDescriptor.listen(); }
 
     // TODO use optional
-    // std::shared_ptr<Context> accept() {
-    //     ...
-    // }
+    // std::shared_ptr<Context> accept();
 
-    bool accept() {
-        socklen_t len = sizeof(_lastBufferedAddress);
-        int maybeFd = ::accept4(_listenDescriptor.fd(), (sockaddr*)(&_lastBufferedAddress), &len,
-                            SOCK_NONBLOCK | SOCK_CLOEXEC);
-        if(maybeFd >= 0) {
-            _lastBufferedSocket = Socket(maybeFd);
-            return true;
-        }
-        // LOG...
-        return false;
-    }
+    bool accept();
 
     // ensure: accept
     // can only get once per request
-    std::pair<InetAddress, Socket> aceeptResult() {
-        return std::make_pair(_lastBufferedAddress, std::move(_lastBufferedSocket));
-    }
+    std::pair<InetAddress, Socket> aceeptResult();
 
-    Acceptor(Looper *looper, InetAddress address)
-        : _looper(looper),
-          _address(address) {
-        _listenDescriptor.setReusePort();
-        _listenDescriptor.setReuseAddr();
-        _listenDescriptor.bind(address);
-    }
-
+    Acceptor(Looper *looper, InetAddress address);
     Acceptor(const Acceptor&) = delete;
     Acceptor(Acceptor&&) = default;
     Acceptor& operator=(const Acceptor&) = delete;
     Acceptor& operator=(Acceptor&&) = default;
-
 
 private:
     Looper *_looper; // TODO remove looper
@@ -64,6 +38,32 @@ private:
     // union { Socket buffered }
     Socket _lastBufferedSocket {Socket::INVALID_FD};
 };
+
+inline bool Acceptor::accept() {
+    socklen_t len = sizeof(_lastBufferedAddress);
+    int maybeFd = ::accept4(_listenDescriptor.fd(), (sockaddr*)(&_lastBufferedAddress), &len,
+                        SOCK_NONBLOCK | SOCK_CLOEXEC);
+    if(maybeFd >= 0) {
+        _lastBufferedSocket = Socket(maybeFd);
+        return true;
+    }
+    // LOG...
+    return false;
+}
+
+// ensure: accept
+// can only get once per request
+inline std::pair<InetAddress, Socket> Acceptor::aceeptResult() {
+    return std::make_pair(_lastBufferedAddress, std::move(_lastBufferedSocket));
+}
+
+inline Acceptor::Acceptor(Looper *looper, InetAddress address)
+    : _looper(looper),
+      _address(address) {
+    _listenDescriptor.setReusePort();
+    _listenDescriptor.setReuseAddr();
+    _listenDescriptor.bind(address);
+}
 
 } // fluent
 #endif
