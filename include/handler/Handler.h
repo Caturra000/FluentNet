@@ -84,6 +84,7 @@ public:
         auto context = &bundle->second;
         if(context->writeEventEnabled()) {
             ssize_t n = context->output.writeTo(context->socket.fd());
+            // assert n >= 0
             if(n > 0 && context->output.unread() == 0) {
                 Context::EpollOperationHint operation;
                 if(context->disableWrite()
@@ -94,9 +95,6 @@ public:
                 // FIXME latency
                 context->_sendCompleteCounter += context->_readyToCompleteCounter;
                 context->_readyToCompleteCounter = 0;
-            } else if(n < 0) {
-                // warn
-                // TODO n >= 0
             }
         }
     }

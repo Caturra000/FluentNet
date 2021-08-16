@@ -40,14 +40,8 @@ public:
         uint32_t events = context->events();
         epoll_event event {events, bundle};
         if(::epoll_ctl(_epollFd, operation, fd, &event)) {
-            try {
-                throw EpollControlException(errno);
-            } catch(...) {
-                // Log...
-                context->exception = std::current_exception();
-                // TODO update return bool and onException(...) in handler
-                // or no try-catch here, any throw will be caught by handler
-            }
+            // caught by handler
+            throw EpollControlException(errno);
         }
     }
 
