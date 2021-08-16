@@ -55,8 +55,10 @@ public:
     using PoolType = std::vector<std::unique_ptr<std::pair<Multiplexer::Token, Context>>>;
 
 public:
-    void run();
+    void run() { for(_stop = false; !_stop; ) batch(); }
+    void batch();
 
+    // TODO stop acceptor event
     void ready() { _acceptor.start(); }
     void stop() { _stop = true; }
 
@@ -100,15 +102,13 @@ private:
 };
 
 template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
-inline void BaseServer<ConnectCallback, MessageCallback, CloseCallback>::run() {
-    for(; !_stop; ) {
-        if(!_isOuterMultiplexer) {
-            _multiplexer->poll(std::chrono::milliseconds::zero());
-        }
-        accept();
-        _handler.handleEvents(_token);
-        _looper.loop();
+inline void BaseServer<ConnectCallback, MessageCallback, CloseCallback>::batch() {
+    if(!_isOuterMultiplexer) {
+        _multiplexer->poll(std::chrono::milliseconds::zero());
     }
+    accept();
+    _handler.handleEvents(_token);
+    _looper.loop();
 }
 
 template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
