@@ -135,11 +135,9 @@ inline void Context::shutdown() {
     if(_nState == NetworkState::CONNECTED) {
         // dont care peer, DISCONNECTING can still handleClose
         _nState = NetworkState::DISCONNECTING;
-        // A can send FIN
-        // inner write flag will be turned off when handleClose
-        // but socket shutdown-WR inplace
-        // poll trigged -> buffer.writeTo -> ...
-        if(_events & EVENT_WRITE) {
+        // ensure buffer is empty
+        // TODO add forceClose
+        if(!(_events & EVENT_WRITE)) {
             socket.shutdown();
         }
     }
