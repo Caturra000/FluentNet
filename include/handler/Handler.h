@@ -78,12 +78,17 @@ private:
     ConnectCallback _connectCallback;
     MessageCallback _messageCallback;
     CloseCallback   _closeCallback;
+    std::vector<epoll_event> _eventBuffer;
 };
 
 template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
 inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleEvents(Token token) {
-    auto &eventVector = _multiplexer->visit(token);
-    for(auto &event : eventVector) {
+    {
+        std::lock_guard<std::mutex> _{_multiplexer->_mutex};
+        auto &eventVector = _multiplexer->visit(token);
+        std::swap(eventVector, _eventBuffer);
+    }
+    for(auto &event : _eventBuffer) {
         auto bundle = static_cast<Bundle>(event.data.ptr);
         auto revent = event.events;
         try {
@@ -95,7 +100,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleEven
             // TODO _exceptionCallback(context);
         }
     }
-    eventVector.clear();
+    _eventBuffer.clear();
 }
 
 template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>

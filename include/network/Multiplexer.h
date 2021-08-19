@@ -37,6 +37,8 @@ private:
     std::vector<epoll_event> _events;
     std::vector<std::vector<epoll_event>> _evnetVectors;
     Token _token {0};
+public:
+    std::mutex _mutex;
 };
 
 inline void Multiplexer::poll(std::chrono::milliseconds timeout) {
@@ -45,6 +47,7 @@ inline void Multiplexer::poll(std::chrono::milliseconds timeout) {
         if(errno == EINTR) return;
         throw EpollWaitException(errno);
     }
+    std::lock_guard<std::mutex> _{_mutex};
     dispatchActiveContext(count);
     if(_events.size() == count) {
         _events.reserve(_events.size() << 1);
@@ -70,6 +73,7 @@ inline void Multiplexer::update(int operation, Bundle bundle) {
 }
 
 inline Multiplexer::Token Multiplexer::token() {
+    std::lock_guard<std::mutex> _{_mutex};
     _evnetVectors.emplace_back();
     return _token++;
 }
