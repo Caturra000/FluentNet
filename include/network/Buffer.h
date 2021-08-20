@@ -24,8 +24,8 @@ public:
     void expand() { _buf.resize(_capacity <<= 1); }
     void expandTo(ssize_t size) { _buf.resize(_capacity = size); }
 
-    void hasRead(ssize_t n) { _r += n; }
-    void hasWritten(ssize_t n);
+    void hasRead(ssize_t n) { _r += n; reuseIfPossible(); }
+    void hasWritten(ssize_t n) { _w += n; }
 
     const char* readBuffer() const { return _buf.data() + _r; }
     char* readBuffer() { return _buf.data() + _r; }
@@ -57,10 +57,11 @@ inline Buffer::Buffer(ssize_t size)
 inline void Buffer::reuseIfPossible() {
     if(_r == _w) {
         clear();
+        return;
     }
     ssize_t bufferRest = unread();
-    if(bufferRest < (_capacity >> 4) && bufferRest < 32) {
-        // TODO
+    if(bufferRest < (_capacity >> 4) && _r > (_capacity >> 4)) {
+        gc();
     }
 }
 
@@ -81,11 +82,6 @@ inline void Buffer::gc(ssize_t hint) {
         ssize_t expectSize = _buf.size() + appendSize;
         expandTo(/*_capacity = */roundToPowerOfTwo(expectSize));
     }
-}
-
-inline void Buffer::hasWritten(ssize_t n) {
-    _w += n;
-    reuseIfPossible();
 }
 
 inline void Buffer::append(const char *data, ssize_t size) {

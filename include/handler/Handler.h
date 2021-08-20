@@ -134,7 +134,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleRead
         // TODO add: const char *callbackReason / size_t reasonCode in Context
         // TODO handleClose(context, "reason...")
         handleClose(bundle);
-    } else {
+    } else if(errno != EAGAIN && errno != EINTR) {
         handleError(bundle);
     }
 }
