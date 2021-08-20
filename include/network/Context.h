@@ -170,7 +170,27 @@ inline void Context::shutdown() {
         // TODO add forceClose
         if(!(_events & EVENT_WRITE)) {
             socket.shutdown();
+            return;
         }
+        // non-empty buffer?
+        // ok, just post a request of async-shutdown
+        this->makeFuture()
+        .poll([](Context *context) {
+            auto netInfo = context->_nState;
+            bool stateValid = netInfo == NetworkState::CONNECTED;
+            if(stateValid && !(context->_events & EVENT_WRITE)) {
+                context->socket.shutdown();
+                // ok
+                return true;
+            }
+            if(!stateValid) {
+                // disconnecting or disconnected
+                // abort (duplicate request?)
+                return true;
+            }
+            // try again in the future!
+            return false;
+        });
     }
 }
 
