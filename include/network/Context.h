@@ -102,8 +102,7 @@ public:
     // user context, anything is ok
     Object any;
 
-// for multiplexer START
-// TODO class
+// for multiplexer
 public:
     using EventBitmap = uint32_t;
     constexpr static EventBitmap EVENT_NONE = 0;
@@ -133,6 +132,7 @@ public:
     bool disableRead();
     bool disableWrite();
 
+// for multiplexer
 private:
     EventBitmap _events {EVENT_NONE};
     EventState _eState {EventState::NEW};
@@ -147,7 +147,19 @@ private:
     // limit: called by send
     void updateMultiplexer(EpollOperationHint hint);
 
-// for multiplexer END
+// log helper
+public:
+    // trace
+    uint64_t hashcode() const;
+    const char* networkInfo() const;
+    char eventStateInfo() const;
+    char eventsInfo() const;
+    const std::string& simpleInfo() const;
+
+// log helper
+private:
+    mutable uint64_t _hashcode {};
+    mutable std::string _cachedInfo;
 };
 
 inline void Context::shutdown() {
@@ -240,6 +252,47 @@ inline constexpr void Context::checkHardCode() {
                     "check EPOLL_CTL_NONE");
 }
 
+inline uint64_t Context::hashcode() const {
+    if(_hashcode) return _hashcode;
+    return _hashcode = (uint64_t(socket.fd()) << 32)
+        ^ uint64_t(address.rawIp())
+        ^ (uint64_t(address.rawPort()) << 24);
+}
+
+inline const char* Context::networkInfo() const {
+    switch(_nState) {
+        case NetworkState::CONNECTING: return "CONNECTING";
+        case NetworkState::CONNECTED: return "CONNECTED";
+        case NetworkState::DISCONNECTING: return "DISCONNECTING";
+        case NetworkState::DISCONNECTED: return "DISCONNECTED";
+        default: return "?";
+    }
+}
+
+inline char Context::eventStateInfo() const {
+    switch(_eState) {
+        case EventState::NEW: return 'N';
+        case EventState::ADDED: return 'A';
+        case EventState::DELETED: return 'D';
+        default : return '?';
+    }
+}
+
+inline char Context::eventsInfo() const {
+    switch(_events) {
+        case EVENT_NONE: return 'N';
+        case EVENT_READ: return 'R';
+        case EVENT_WRITE: return 'W';
+        case EVENT_READ | EVENT_WRITE: return 'M'; // Mixed
+        default : return '?';
+    }
+}
+
+inline const std::string& Context::simpleInfo() const {
+    if(_cachedInfo.length()) return _cachedInfo;
+    return _cachedInfo = "[" + std::to_string(socket.fd()) + ", ("
+        + address.toString() + ")]";
+}
 
 } // fluent
 #endif
