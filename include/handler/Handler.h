@@ -3,6 +3,7 @@
 #include <bits/stdc++.h>
 #include "../network/Multiplexer.h"
 #include "../network/Context.h"
+#include "../logger/Logger.h"
 #include "HandlerBase.h"
 namespace fluent {
 
@@ -96,9 +97,11 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleEven
         auto revent = event.events;
         try {
             Base::handleEvent(bundle, revent);
-        } catch(...) {
-            // Log...
+        } catch(const std::exception &e) {
             auto context = &bundle->second;
+            FLUENT_LOG_WARN("[H]",context->hashcode(), "catches an exception:", e.what());
+            FLUENT_LOG_DEBUG("context handling:", context->simpleInfo(),
+                context->networkInfo(), context->eventStateInfo(), context->eventsInfo());
             context->exception = std::current_exception();
             // TODO _exceptionCallback(context);
         }
@@ -109,6 +112,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleEven
 template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
 inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleNewContext(Bundle bundle) try {
     auto context = &bundle->second;
+    FLUENT_LOG_DEBUG(context->simpleInfo(), "connecting");
     // ensure
     context->_multiplexer = _multiplexer;
     context->_bundle = bundle;
@@ -119,10 +123,11 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleNewC
     if((operation = context->updateEventState()) != Context::EPOLL_CTL_NONE) {
         _multiplexer->update(operation, bundle);
     }
+    FLUENT_LOG_INFO(context->simpleInfo(), "connected. [HASHCODE]", context->hashcode());
     _connectCallback(context);
-} catch(...) {
-    // Log...
+} catch(const std::exception &e) {
     auto context = &bundle->second;
+    FLUENT_LOG_WARN("[H]",context->hashcode(), "catches an exception:", e.what());
     context->exception = std::current_exception();
     // TODO _exceptionCallback(context);
 }
@@ -131,11 +136,13 @@ template <typename ConnectCallback, typename MessageCallback, typename CloseCall
 inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleRead(Bundle bundle) {
     auto context = &bundle->second;
     ssize_t n = context->input.readFrom(context->socket.fd());
+    FLUENT_LOG_DEBUG("[H]", context->hashcode(), "<--", "(stream length)", n);
     if(n > 0) {
         _messageCallback(context);
     } else if(n == 0) {
         // TODO add: const char *callbackReason / size_t reasonCode in Context
         // TODO handleClose(context, "reason...")
+        FLUENT_LOG_INFO("[H]", context->hashcode(), "<--", "FIN");
         handleClose(bundle);
     } else if(errno != EAGAIN && errno != EINTR) {
         handleError(bundle);
@@ -147,6 +154,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleWrit
     auto context = &bundle->second;
     if(context->writeEventEnabled()) {
         ssize_t n = context->output.writeTo(context->socket.fd());
+        FLUENT_LOG_DEBUG("[H]", context->hashcode(), "-->", "(stream length)", n);
         // assert n >= 0
         handleWriteComplete(context, n);
         if(n > 0 && context->output.unread() == 0) {
@@ -174,6 +182,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleClos
         }
         context->_nState = Context::NetworkState::DISCONNECTED;
         _closeCallback(context);
+        FLUENT_LOG_INFO(context->simpleInfo(), "close. [H]", context->hashcode());
     }
 }
 
@@ -186,11 +195,13 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleErro
     // } catch(...) {
     //     context->exception = std::current_exception();
     // }
+    FLUENT_LOG_WARN("[H]", (&bundle->second)->hashcode(), "error callback!");
     throw FluentException("error callback");
 }
 
 template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
 inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleError(Bundle bundle, const char *errorMessage) {
+    FLUENT_LOG_WARN("[H]", (&bundle->second)->hashcode(), errorMessage);
     throw FluentException(errorMessage);
 }
 

@@ -2,6 +2,7 @@
 #define __FLUENT_NETWORK_ACCEPTOR_H__
 #include <bits/stdc++.h>
 #include "../future/Futures.h"
+#include "../logger/Logger.h"
 #include "InetAddress.h"
 #include "Socket.h"
 namespace fluent {
@@ -63,6 +64,7 @@ inline Acceptor::Acceptor(Looper *looper, InetAddress address)
     _listenDescriptor.setReusePort();
     _listenDescriptor.setReuseAddr();
     _listenDescriptor.bind(address);
+    FLUENT_LOG_INFO(address.toStringPretty(), "bind with fd", _listenDescriptor.fd());
 }
 
 } // fluent

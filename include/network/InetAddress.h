@@ -15,6 +15,7 @@ public:
     InetAddress(const std::string &address);
 
     std::string toString() const { return ipToString() + ":" + std::to_string(::ntohs(_address.sin_port)); }
+    std::string toStringPretty() const { return '(' + toString() + ')'; }
     uint16_t rawPort() const { return ::ntohs(_address.sin_port); };
     uint32_t rawIp() const { return ::ntohl(_address.sin_addr.s_addr); };
 
