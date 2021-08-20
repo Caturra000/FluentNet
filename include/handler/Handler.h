@@ -50,14 +50,17 @@ public:
 
 // register
 public:
-    void onConnect(ConnectCallback callback) { _connectCallback = std::move(callback); }
-    void onMessage(MessageCallback callback) { _messageCallback = std::move(callback); }
-    void onClose(CloseCallback callback) { _closeCallback = std::move(callback); }
+    void onConnect(ConnectCallback callback) { _connectCallback = std::move(callback); _connectFlag = true; }
+    void onMessage(MessageCallback callback) { _messageCallback = std::move(callback); _messageFlag = true;}
+    void onClose(CloseCallback callback) { _closeCallback = std::move(callback); _closeFlag = true; }
 
 public:
     Handler() = delete;
     Handler(Multiplexer *multiplexer)
-        : _multiplexer(multiplexer) {}
+        : _multiplexer(multiplexer),
+          _connectFlag(false),
+          _messageFlag(false),
+          _closeFlag(false) {}
     Handler(Multiplexer *multiplexer,
             ConnectCallback connectCallback,
             MessageCallback messageCallback,
@@ -65,7 +68,10 @@ public:
         : _multiplexer(multiplexer),
           _connectCallback(std::move(connectCallback)),
           _messageCallback(std::move(messageCallback)),
-          _closeCallback(std::move(closeCallback)) {}
+          _closeCallback(std::move(closeCallback)),
+          _connectFlag(true),
+          _messageFlag(true),
+          _closeFlag(true) {}
 
     ~Handler() = default;
 
@@ -83,6 +89,10 @@ private:
     MessageCallback _messageCallback;
     CloseCallback   _closeCallback;
     std::vector<epoll_event> _eventBuffer;
+    // template functor cannot cast bool(f) to check flag (std::function is fine)
+    bool _connectFlag;
+    bool _messageFlag;
+    bool _closeFlag;
 };
 
 template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
@@ -124,7 +134,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleNewC
         _multiplexer->update(operation, bundle);
     }
     FLUENT_LOG_INFO(context->simpleInfo(), "connected. [HASHCODE]", context->hashcode());
-    _connectCallback(context);
+    if(_connectFlag) _connectCallback(context);
 } catch(const std::exception &e) {
     auto context = &bundle->second;
     FLUENT_LOG_WARN("[H]",context->hashcode(), "catches an exception:", e.what());
@@ -138,7 +148,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleRead
     ssize_t n = context->input.readFrom(context->socket.fd());
     FLUENT_LOG_DEBUG("[H]", context->hashcode(), "<--", "(stream length)", n);
     if(n > 0) {
-        _messageCallback(context);
+        if(_messageFlag) _messageCallback(context);
     } else if(n == 0) {
         // TODO add: const char *callbackReason / size_t reasonCode in Context
         // TODO handleClose(context, "reason...")
@@ -181,7 +191,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleClos
             _multiplexer->update(operation, bundle);
         }
         context->_nState = Context::NetworkState::DISCONNECTED;
-        _closeCallback(context);
+        if(_closeFlag) _closeCallback(context);
         FLUENT_LOG_INFO(context->simpleInfo(), "close. [H]", context->hashcode());
     }
 }
