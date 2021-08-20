@@ -36,22 +36,49 @@ public:
     // if failed, A keeps DISCONNECTING? (B-side context not in epoll? crashed?)
     void shutdown();
 
+// networks -modified by friends
+private:
+    NetworkState _nState {NetworkState::CONNECTING};
+
+// common
 public:
     Future<Context*> makeFuture() { return fluent::makeFuture(looper, this); }
 
     int fd() const { return socket.fd(); }
 
-    void send(const void *buf, size_t n);
+// send
+public:
+    class Completion {
+    public:
+        // index flag: never
+        constexpr static size_t INVALID = 0;
+        // index flag: always
+        constexpr static size_t FAST_COMPLETE = 1;
+    private:
+        size_t _token;
+        Context *_master;
+    public:
+        bool poll() const { return _master->_sendCompletedIndex > _token; }
+        Completion(size_t token, Context *master)
+            : _token(token), _master(master) {}
+    };
+
+    Completion send(const void *buf, size_t n);
 
     template <size_t N>
-    void send(const char (&buf)[N]) { send(buf, N-1); /*'\0'*/ }
+    Completion send(const char (&buf)[N]) {  return send(buf, N-1); /*'\0'*/ }
 
-    void send(const std::string &str) { send(str.c_str(), str.size()); }
+    Completion send(const std::string &str) { return send(str.c_str(), str.size()); }
 
-    // for future.poll
-    bool sendCompleteTestAndSet();
-    bool sendComplete() { return _sendCompleteCounter > 0; }
+// send -modified by friends
+private:
+    std::queue<size_t> _sendProvider;
+    // 0 - must be completed
+    size_t _sendCurrentIndex {Completion::FAST_COMPLETE + 1};
+    size_t _sendCompletedIndex {Completion::FAST_COMPLETE + 1};
 
+// class attribute
+public:
     Context(Looper *looper, const InetAddress &address, Socket &&socket)
         : looper(looper),
           address(address),
@@ -74,14 +101,6 @@ public:
     Buffer output;
     // user context, anything is ok
     Object any;
-
-// modified by friend
-private:
-    NetworkState _nState {NetworkState::CONNECTING};
-
-    // for complete callback and future
-    size_t _sendCompleteCounter {0};
-    size_t _readyToCompleteCounter {0};
 
 // for multiplexer START
 // TODO class
@@ -143,21 +162,17 @@ inline void Context::shutdown() {
     }
 }
 
-inline void Context::send(const void *buf, size_t n) {
-    if(_nState != NetworkState::DISCONNECTING || _nState != NetworkState::DISCONNECTED) {
+inline Context::Completion Context::send(const void *buf, size_t n) {
+    if(_nState != NetworkState::DISCONNECTING && _nState != NetworkState::DISCONNECTED) {
         ssize_t ret = socket.write(buf, n);
-
-        // assert(ret >= 0);
-
-        // TODO confirm wirte-complete
-        // TODO futureSend, return Future<...>
         if(ret == n) {
-            _sendCompleteCounter++;
-            return; // fast return
+            // fast return
+            return Completion{Completion::FAST_COMPLETE, this};
         }
         // TODO submit request to buffer with readyFlag and vector
         output.append(static_cast<const char *>(buf) + ret, n - ret);
-        _readyToCompleteCounter++;
+        _sendProvider.emplace(n - ret);
+        size_t sendToken = _sendCurrentIndex++;
         if(!(_events & EVENT_WRITE)) {
             _events |= EVENT_WRITE;
             // TODO remove this ugly code, use handler when any callback
@@ -165,15 +180,9 @@ inline void Context::send(const void *buf, size_t n) {
             updateMultiplexer(hint);
             // will disable write when buf.unread == 0 (handleWrite)
         }
+        return Completion{sendToken, this};
     }
-}
-
-inline bool Context::sendCompleteTestAndSet() {
-    if(_sendCompleteCounter) {
-        _sendCompleteCounter--;
-        return true;
-    }
-    return false;
+    return Completion{Completion::INVALID, this};
 }
 
 inline Context::EpollOperationHint Context::updateEventState() {

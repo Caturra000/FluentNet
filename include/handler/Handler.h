@@ -74,6 +74,9 @@ public:
     Handler& operator=(Handler&&) = default;
 
 private:
+    void handleWriteComplete(Context *context, ssize_t n);
+
+private:
     Multiplexer     *_multiplexer;
     ConnectCallback _connectCallback;
     MessageCallback _messageCallback;
@@ -145,16 +148,13 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleWrit
     if(context->writeEventEnabled()) {
         ssize_t n = context->output.writeTo(context->socket.fd());
         // assert n >= 0
+        handleWriteComplete(context, n);
         if(n > 0 && context->output.unread() == 0) {
             Context::EpollOperationHint operation;
             if(context->disableWrite()
                     && ((operation = context->updateEventState()) != Context::EPOLL_CTL_NONE)) {
                 _multiplexer->update(operation, bundle);
             }
-            // writeComplete
-            // FIXME latency
-            context->_sendCompleteCounter += context->_readyToCompleteCounter;
-            context->_readyToCompleteCounter = 0;
         }
     }
 }
@@ -192,6 +192,21 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleErro
 template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
 inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleError(Bundle bundle, const char *errorMessage) {
     throw FluentException(errorMessage);
+}
+
+template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
+inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleWriteComplete(Context *context, ssize_t n) {
+    auto &provider = context->_sendProvider;
+    while(n > 0 && !provider.empty()) {
+        if(provider.front() > n) {
+            provider.front() -= n;
+            break;
+        }
+        // else
+        n -= provider.front();
+        provider.pop();
+        context->_sendCompletedIndex++;
+    }
 }
 
 } // fluent
