@@ -197,16 +197,16 @@ inline void Context::shutdown() {
 
 inline Context::Completion Context::send(const void *buf, size_t n) {
     if(_nState != NetworkState::DISCONNECTING && _nState != NetworkState::DISCONNECTED) {
-        FLUENT_LOG_DEBUG("[H]", hashcode(), "tries to write", n, "bytes");
+        FLUENT_LOG_DEBUG(simpleInfo(), "tries to write", n, "bytes");
         ssize_t ret = socket.write(buf, n);
-        FLUENT_LOG_DEBUG("[H]", hashcode(), "-->", "(stream length)", ret);
+        FLUENT_LOG_DEBUG(simpleInfo(), "-->", "(stream length)", ret);
         if(ret == n) {
             // fast return
             return Completion{Completion::FAST_COMPLETE, this};
         }
         // TODO submit request to buffer with readyFlag and vector
         output.append(static_cast<const char *>(buf) + ret, n - ret);
-        FLUENT_LOG_DEBUG("[H]", hashcode(), "-->", "(buffer length)", n - ret);
+        FLUENT_LOG_DEBUG(simpleInfo(), "-->", "(buffer length)", n - ret);
         _sendProvider.emplace(n - ret);
         size_t sendToken = _sendCurrentIndex++;
         if(!(_events & EVENT_WRITE)) {

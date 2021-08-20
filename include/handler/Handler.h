@@ -109,7 +109,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleEven
             Base::handleEvent(bundle, revent);
         } catch(const std::exception &e) {
             auto context = &bundle->second;
-            FLUENT_LOG_WARN("[H]",context->hashcode(), "catches an exception:", e.what());
+            FLUENT_LOG_WARN(context->simpleInfo(), "catches an exception:", e.what());
             FLUENT_LOG_DEBUG("context handling:", context->simpleInfo(),
                 context->networkInfo(), context->eventStateInfo(), context->eventsInfo());
             context->exception = std::current_exception();
@@ -137,7 +137,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleNewC
     if(_connectFlag) _connectCallback(context);
 } catch(const std::exception &e) {
     auto context = &bundle->second;
-    FLUENT_LOG_WARN("[H]",context->hashcode(), "catches an exception:", e.what());
+    FLUENT_LOG_WARN(context->simpleInfo(), "catches an exception:", e.what());
     context->exception = std::current_exception();
     // TODO _exceptionCallback(context);
 }
@@ -146,13 +146,13 @@ template <typename ConnectCallback, typename MessageCallback, typename CloseCall
 inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleRead(Bundle bundle) {
     auto context = &bundle->second;
     ssize_t n = context->input.readFrom(context->socket.fd());
-    FLUENT_LOG_DEBUG("[H]", context->hashcode(), "<--", "(stream length)", n);
+    FLUENT_LOG_DEBUG(context->simpleInfo(), "<--", "(stream length)", n);
     if(n > 0) {
         if(_messageFlag) _messageCallback(context);
     } else if(n == 0) {
         // TODO add: const char *callbackReason / size_t reasonCode in Context
         // TODO handleClose(context, "reason...")
-        FLUENT_LOG_INFO("[H]", context->hashcode(), "<--", "FIN");
+        FLUENT_LOG_INFO(context->simpleInfo(), "<--", "FIN");
         handleClose(bundle);
     } else if(errno != EAGAIN && errno != EINTR) {
         handleError(bundle);
@@ -164,7 +164,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleWrit
     auto context = &bundle->second;
     if(context->writeEventEnabled()) {
         ssize_t n = context->output.writeTo(context->socket.fd());
-        FLUENT_LOG_DEBUG("[H]", context->hashcode(), "-->", "(stream length)", n);
+        FLUENT_LOG_DEBUG(context->simpleInfo(), "-->", "(stream length)", n);
         // assert n >= 0
         handleWriteComplete(context, n);
         if(n > 0 && context->output.unread() == 0) {
@@ -192,7 +192,7 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleClos
         }
         context->_nState = Context::NetworkState::DISCONNECTED;
         if(_closeFlag) _closeCallback(context);
-        FLUENT_LOG_INFO(context->simpleInfo(), "close. [H]", context->hashcode());
+        FLUENT_LOG_INFO(context->simpleInfo(), "close. [HASHCODE]", context->hashcode());
     }
 }
 
@@ -205,13 +205,13 @@ inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleErro
     // } catch(...) {
     //     context->exception = std::current_exception();
     // }
-    FLUENT_LOG_WARN("[H]", (&bundle->second)->hashcode(), "error callback!");
+    FLUENT_LOG_WARN((&bundle->second)->simpleInfo(), "error callback!");
     throw FluentException("error callback");
 }
 
 template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
 inline void Handler<ConnectCallback, MessageCallback, CloseCallback>::handleError(Bundle bundle, const char *errorMessage) {
-    FLUENT_LOG_WARN("[H]", (&bundle->second)->hashcode(), errorMessage);
+    FLUENT_LOG_WARN((&bundle->second)->simpleInfo(), errorMessage);
     throw FluentException(errorMessage);
 }
 
