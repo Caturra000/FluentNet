@@ -62,6 +62,8 @@ public:
     void ready() { _acceptor.start(); }
     void stop() { _stop = true; }
 
+    Looper* looper() { return &_looper; }
+
     void onConnect(ConnectCallback callback) { _handler.onConnect(std::move(callback)); }
     void onMessage(MessageCallback callback) { _handler.onMessage(std::move(callback)); }
     void onClose(CloseCallback callback) { _handler.onClose(std::move(callback)); }

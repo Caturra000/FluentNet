@@ -36,7 +36,9 @@ public:
     // future: in client loop
     Future<Context*> connect(InetAddress address);
 
-   void stop() { _stop = true; }
+    void stop() { _stop = true; }
+
+    Looper* looper() { return &_looper; }
 
     void onConnect(ConnectCallback callback) { _handler.onConnect(std::move(callback)); }
     void onMessage(MessageCallback callback) { _handler.onMessage(std::move(callback)); }
