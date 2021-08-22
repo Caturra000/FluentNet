@@ -6,6 +6,12 @@ namespace fluent {
 template <typename T>
 struct FunctionTraits;
 
+template <typename T>
+struct FunctionTraits<T&>: public FunctionTraits<T> {};
+
+template <typename T>
+struct FunctionTraits<T&&>: public FunctionTraits<T> {};
+
 template <typename Ret, typename ...Args>
 struct FunctionTraits<Ret(Args...)> {
     constexpr static size_t ArgsSize = sizeof...(Args);
