@@ -7,6 +7,10 @@
 #include "../future/Futures.h"
 #include "../utils/Object.h"
 #include "../logger/Logger.h"
+#include "../policy/NetworksPolicy.h"
+#include "../policy/LifecyclePolicy.h"
+#include "../policy/SendPolicy.h"
+#include "../policy/MultiplexerPolicy.h"
 #include "InetAddress.h"
 #include "Socket.h"
 #include "Buffer.h"
@@ -14,88 +18,16 @@
 namespace fluent {
 
 class Multiplexer;
-class Context /*: public std::enable_shared_from_this<Context>*/ {
+
+// policy base can make context interface clean (hide private/protected implementation details)
+// using keyword marks all the public interfaces
+class Context: public NetworksPolicy,
+               public LifecyclePolicy,
+               public SendPolicy,
+               public MultiplexerPolicy {
 // friends
 public:
     template <typename, typename, typename> friend class Handler;
-
-// networks
-public:
-    enum class NetworkState {
-        CONNECTING,
-        CONNECTED,
-        DISCONNECTING,
-        DISCONNECTED,
-    };
-
-    bool isConnecting() const { return _nState == NetworkState::CONNECTING; }
-    bool isConnected() const { return _nState == NetworkState::CONNECTED; }
-    bool isDisConnecting() const { return _nState == NetworkState::DISCONNECTING; }
-    bool isDisConnected() const { return _nState == NetworkState::DISCONNECTED; }
-
-    // A call shutdown and set DISCONNECTING ---> send FIN ---> B recv 0 ---> B handleClose ---> B shutdown and set DISCONNECTED
-    // B send FIN ---> A recv 0 ---> A handleClose ---> A DISCONNECTED
-    // if failed, A keeps DISCONNECTING? (B-side context not in epoll? crashed?)
-    void shutdown();
-
-// networks -modified by friends
-private:
-    NetworkState _nState {NetworkState::CONNECTING};
-
-// async, future, lifecycle
-public:
-    // ensure: ensureLifecycle() or EnableLifecycle
-    auto makeStrongFuture() -> Future<std::tuple<Context*, StrongLifecycle>>;
-    auto makeWeakFuture() -> Future<std::tuple<Context*, WeakLifecycle>>;
-
-    // unsafe but simple future
-    Future<Context*> makeFuture() { return fluent::makeFuture(looper, this); }
-
-    // lifecycle is null by default
-    // user should explicitly enable this feature
-    void ensureLifecycle();
-
-    // opened for user in special case (guarded by const)
-    const StrongLifecycle& getLifecycle() { return _lifecycle; }
-
-// lifecycle
-private:
-    // make async safe, nullptr by default
-    StrongLifecycle _lifecycle;
-
-public:
-    int fd() const { return socket.fd(); }
-
-// send
-public:
-    class Completion {
-    public:
-        // index flag: never
-        constexpr static size_t INVALID = 0;
-        // index flag: always
-        constexpr static size_t FAST_COMPLETE = 1;
-    private:
-        size_t _token;
-        Context *_master;
-    public:
-        bool poll() const { return _master->_sendCompletedIndex > _token; }
-        Completion(size_t token, Context *master)
-            : _token(token), _master(master) {}
-    };
-
-    Completion send(const void *buf, size_t n);
-
-    template <size_t N>
-    Completion send(const char (&buf)[N]) {  return send(buf, N-1); /*'\0'*/ }
-
-    Completion send(const std::string &str) { return send(str.c_str(), str.size()); }
-
-// send -modified by friends
-private:
-    std::queue<size_t> _sendProvider;
-    // 0 - must be completed
-    size_t _sendCurrentIndex {Completion::FAST_COMPLETE + 1};
-    size_t _sendCompletedIndex {Completion::FAST_COMPLETE + 1};
 
 // class attribute
 public:
@@ -108,7 +40,7 @@ public:
         : looper(looper),
           address(address),
           socket(std::move(socket)),
-          _lifecycle(std::make_shared<Lifecycle>()) {}
+          LifecyclePolicy(EnableLifecycle{}) {}
 
     ~Context() = default;
     Context(const Context&) = delete;
@@ -116,77 +48,85 @@ public:
     Context& operator=(const Context&) = delete;
     Context& operator=(Context&&) = default;
 
+// wrapper
+public:
+    int fd() const { return socket.fd(); }
+
 // shared context
 public:
     Looper *looper;
     InetAddress address;
     Socket socket;
-    // captured exception
-    std::exception_ptr exception;
     Buffer input;
     Buffer output;
+    // captured exception
+    std::exception_ptr exception;
     // user context, anything is ok
     Object any;
 
-// for multiplexer
+// networks
 public:
-    using EventBitmap = uint32_t;
-    constexpr static EventBitmap EVENT_NONE = 0;
-    constexpr static EventBitmap EVENT_READ = POLL_IN | POLL_PRI;
-    constexpr static EventBitmap EVENT_WRITE = POLL_OUT;
+    // A call shutdown and set DISCONNECTING ---> send FIN ---> B recv 0 ---> B handleClose ---> B shutdown and set DISCONNECTED
+    // B send FIN ---> A recv 0 ---> A handleClose ---> A DISCONNECTED
+    // if failed, A keeps DISCONNECTING? (B-side context not in epoll? crashed?)
+    void shutdown();
 
-    enum class EventState {
-        NEW,
-        ADDED,
-        DELETED
-    };
+    using NetworksPolicy::isConnecting;
+    using NetworksPolicy::isConnected;
+    using NetworksPolicy::isDisConnecting;
+    using NetworksPolicy::isDisConnected;
 
-    // TODO friend class
-    using EpollOperationHint = uint;
-    constexpr static EpollOperationHint EPOLL_CTL_NONE = 0;
+// async, future, lifecycle
+public:
+    // ensure: ensureLifecycle() or EnableLifecycle
+    auto makeStrongFuture() -> Future<std::tuple<Context*, StrongLifecycle>>;
+    auto makeWeakFuture() -> Future<std::tuple<Context*, WeakLifecycle>>;
 
-    // update the event state and return next operation hint for epoll
-    EpollOperationHint updateEventState();
+    // unsafe but simple future
+    Future<Context*> makeFuture() { return fluent::makeFuture(looper, this); }
 
-    EventBitmap events() const { return _events; }
-    bool readEventEnabled() const { return _events & EVENT_READ; }
-    bool writeEventEnabled() const { return _events & EVENT_WRITE; }
+    using LifecyclePolicy::ensureLifecycle;
+    using LifecyclePolicy::getLifecycle;
 
-    // note: must update state for epoll
-    bool enableRead();
-    bool enableWrite();
-    bool disableRead();
-    bool disableWrite();
+// send
+public:
+    Completion send(const void *buf, size_t n);
+    template <size_t N>
+    Completion send(const char (&buf)[N]) {  return send(buf, N-1); /*'\0'*/ }
+    Completion send(const std::string &str) { return send(str.c_str(), str.size()); }
 
-// for multiplexer
-private:
-    EventBitmap _events {EVENT_NONE};
-    EventState _eState {EventState::NEW};
-
-    constexpr static void checkHardCode();
-
-    // ugly...
-    Multiplexer *_multiplexer;
-    std::pair<size_t, Context> *_bundle;
-
-    // ensure: handle init
-    // limit: called by send
-    void updateMultiplexer(EpollOperationHint hint);
+// multiplexer
+public:
+    using MultiplexerPolicy::updateEventState;
+    using MultiplexerPolicy::events;
+    using MultiplexerPolicy::readEventEnabled;
+    using MultiplexerPolicy::writeEventEnabled;
+    using MultiplexerPolicy::enableRead;
+    using MultiplexerPolicy::enableWrite;
+    using MultiplexerPolicy::disableRead;
+    using MultiplexerPolicy::disableWrite;
 
 // log helper
 public:
     // trace
     uint64_t hashcode() const;
-    const char* networkInfo() const;
-    char eventStateInfo() const;
-    char eventsInfo() const;
     const std::string& simpleInfo() const;
 
-// log helper
+    using NetworksPolicy::networkInfo;
+    using MultiplexerPolicy::eventStateInfo;
+    using MultiplexerPolicy::eventsInfo;
+
+// multiplexer(private)
+private:
+    void updateMultiplexer(EpollOperationHint hint);
+
+// log helper(private)
 private:
     mutable uint64_t _hashcode {};
     mutable std::string _cachedInfo;
 };
+
+/// impl
 
 inline void Context::shutdown() {
     if(_nState == NetworkState::CONNECTED) {
@@ -228,12 +168,6 @@ inline auto Context::makeWeakFuture() -> Future<std::tuple<Context*, WeakLifecyc
     return fluent::makeTupleFuture(looper, this, WeakLifecycle(_lifecycle));
 }
 
-inline void Context::ensureLifecycle() {
-    if(!_lifecycle) {
-        _lifecycle = std::make_shared<Lifecycle>();
-    }
-}
-
 inline Context::Completion Context::send(const void *buf, size_t n) {
     if(_nState != NetworkState::DISCONNECTING && _nState != NetworkState::DISCONNECTED) {
         FLUENT_LOG_DEBUG(simpleInfo(), "tries to write", n, "bytes");
@@ -260,95 +194,11 @@ inline Context::Completion Context::send(const void *buf, size_t n) {
     return Completion{Completion::INVALID, this};
 }
 
-inline Context::EpollOperationHint Context::updateEventState() {
-    if(_eState == EventState::NEW || _eState == EventState::DELETED) {
-        _eState = EventState::ADDED;
-        return EPOLL_CTL_ADD;
-    }
-
-    // else : EventState::ADD
-
-    if(_events == EVENT_NONE) {
-        _eState = EventState::DELETED;
-        return EPOLL_CTL_DEL;
-    } else {
-        return EPOLL_CTL_MOD;
-    }
-}
-
-inline bool Context::enableRead() {
-    if(!(_events & EVENT_READ)) {
-        _events |= EVENT_READ;
-        return true;
-    }
-    return false;
-}
-
-inline bool Context::enableWrite() {
-    if(!(_events & EVENT_WRITE)) {
-        _events |= EVENT_WRITE;
-        return true;
-    }
-    return false;
-}
-
-inline bool Context::disableRead() {
-    if(_events & EVENT_READ) {
-        _events &= ~EVENT_READ;
-        return true;
-    }
-    return false;
-}
-
-inline bool Context::disableWrite() {
-    if(_events & EVENT_WRITE) {
-        _events &= ~EVENT_WRITE;
-        return true;
-    }
-    return false;
-}
-
-inline constexpr void Context::checkHardCode() {
-    static_assert(EPOLL_CTL_NONE != EPOLL_CTL_ADD
-                    && EPOLL_CTL_NONE != EPOLL_CTL_DEL
-                    && EPOLL_CTL_NONE != EPOLL_CTL_MOD,
-                    "check EPOLL_CTL_NONE");
-}
-
 inline uint64_t Context::hashcode() const {
     if(_hashcode) return _hashcode;
     return _hashcode = (uint64_t(socket.fd()) << 32)
         ^ uint64_t(address.rawIp())
         ^ (uint64_t(address.rawPort()) << 24);
-}
-
-inline const char* Context::networkInfo() const {
-    switch(_nState) {
-        case NetworkState::CONNECTING: return "CONNECTING";
-        case NetworkState::CONNECTED: return "CONNECTED";
-        case NetworkState::DISCONNECTING: return "DISCONNECTING";
-        case NetworkState::DISCONNECTED: return "DISCONNECTED";
-        default: return "?";
-    }
-}
-
-inline char Context::eventStateInfo() const {
-    switch(_eState) {
-        case EventState::NEW: return 'N';
-        case EventState::ADDED: return 'A';
-        case EventState::DELETED: return 'D';
-        default : return '?';
-    }
-}
-
-inline char Context::eventsInfo() const {
-    switch(_events) {
-        case EVENT_NONE: return 'N';
-        case EVENT_READ: return 'R';
-        case EVENT_WRITE: return 'W';
-        case EVENT_READ | EVENT_WRITE: return 'M'; // Mixed
-        default : return '?';
-    }
 }
 
 inline const std::string& Context::simpleInfo() const {
