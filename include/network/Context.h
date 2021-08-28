@@ -10,6 +10,7 @@
 #include "InetAddress.h"
 #include "Socket.h"
 #include "Buffer.h"
+#include "Lifecycle.h"
 namespace fluent {
 
 class Multiplexer;
@@ -41,10 +42,28 @@ public:
 private:
     NetworkState _nState {NetworkState::CONNECTING};
 
-// common
+// async, future, lifecycle
 public:
+    // ensure: ensureLifecycle() or EnableLifecycle
+    auto makeStrongFuture() -> Future<std::tuple<Context*, StrongLifecycle>>;
+    auto makeWeakFuture() -> Future<std::tuple<Context*, WeakLifecycle>>;
+
+    // unsafe but simple future
     Future<Context*> makeFuture() { return fluent::makeFuture(looper, this); }
 
+    // lifecycle is null by default
+    // user should explicitly enable this feature
+    void ensureLifecycle();
+
+    // opened for user in special case (guarded by const)
+    const StrongLifecycle& getLifecycle() { return _lifecycle; }
+
+// lifecycle
+private:
+    // make async safe, nullptr by default
+    StrongLifecycle _lifecycle;
+
+public:
     int fd() const { return socket.fd(); }
 
 // send
@@ -84,6 +103,12 @@ public:
         : looper(looper),
           address(address),
           socket(std::move(socket)) {}
+
+    Context(Looper *looper, const InetAddress &address, Socket &&socket, EnableLifecycle)
+        : looper(looper),
+          address(address),
+          socket(std::move(socket)),
+          _lifecycle(std::make_shared<Lifecycle>()) {}
 
     ~Context() = default;
     Context(const Context&) = delete;
@@ -192,6 +217,20 @@ inline void Context::shutdown() {
             // try again in the future!
             return false;
         });
+    }
+}
+
+inline auto Context::makeStrongFuture() -> Future<std::tuple<Context*, StrongLifecycle>> {
+    return fluent::makeTupleFuture(looper, this, _lifecycle);
+}
+
+inline auto Context::makeWeakFuture() -> Future<std::tuple<Context*, WeakLifecycle>> {
+    return fluent::makeTupleFuture(looper, this, WeakLifecycle(_lifecycle));
+}
+
+inline void Context::ensureLifecycle() {
+    if(!_lifecycle) {
+        _lifecycle = std::make_shared<Lifecycle>();
     }
 }
 
