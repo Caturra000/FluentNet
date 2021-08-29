@@ -30,6 +30,12 @@ class Context: protected NetworksPolicy,
 public:
     template <typename, typename, typename> friend class Handler;
 
+// type alias
+public:
+    using Completion = SendPolicy::Completion;
+    using EpollOperationHint = MultiplexerPolicy::EpollOperationHint;
+    using EventBitmap = MultiplexerPolicy::EventBitmap;
+
 // class attribute
 public:
     Context(Looper *looper, const InetAddress &address, Socket &&socket)
