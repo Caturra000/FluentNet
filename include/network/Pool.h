@@ -55,7 +55,12 @@ inline bool Pool::isResuable() {
 
 inline bool Pool::isResuable(size_t index) {
     auto &connection = _container[index];
-    return connection == nullptr || connection->second.isDisConnected();
+    if(connection == nullptr) return true;
+    auto &context = connection->second;
+    if(!context.isDisConnected()) return false;
+    const StrongLifecycle& lifecycle = context.getLifecycle();
+    // lifecycle disabled or no strong guard
+    return lifecycle == nullptr || lifecycle.use_count() <= 1;
 }
 
 inline Pool::Container::reference Pool::get(size_t index) {

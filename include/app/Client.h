@@ -36,6 +36,10 @@ public:
     // future: in client loop
     Future<Context*> connect(InetAddress address);
 
+    // callback: T(context*), no restriction on the return type T
+    template <typename F>
+    auto connect(InetAddress address, F &&callback) -> Future<typename FunctionTraits<F>::ReturnType>;
+
     void stop() { _stop = true; }
 
     Looper* looper() { return &_looper; }
@@ -91,7 +95,24 @@ inline Future<Context*> BaseClient<ConnectCallback, MessageCallback, CloseCallba
             Multiplexer::Bundle bundle = _connections.emplace(_token, &_looper, address, std::move(socket));
             _handler.handleNewContext(bundle);
             auto context = &bundle->second;
+            context->ensureLifecycle();
             return context;
+        });
+}
+
+template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
+template <typename F>
+inline auto BaseClient<ConnectCallback, MessageCallback, CloseCallback>::connect(InetAddress address, F &&callback)
+-> Future<typename FunctionTraits<F>::ReturnType> {
+    return _connector.connect(address)
+        .then([this, callback = std::forward<F>(callback)](std::pair<InetAddress, Socket> &&contextArgs) {
+            auto &address = contextArgs.first;
+            auto &socket = contextArgs.second;
+            Multiplexer::Bundle bundle = _connections.emplace(_token, &_looper, address, std::move(socket));
+            _handler.handleNewContext(bundle);
+            auto context = &bundle->second;
+            context->ensureLifecycle();
+            return callback(context);
         });
 }
 
