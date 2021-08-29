@@ -20,11 +20,12 @@ namespace fluent {
 class Multiplexer;
 
 // policy base can make context interface clean (hide private/protected implementation details)
+// protected inheritance: avoid the implicit casting
 // using keyword marks all the public interfaces
-class Context: public NetworksPolicy,
-               public LifecyclePolicy,
-               public SendPolicy,
-               public MultiplexerPolicy {
+class Context: protected NetworksPolicy,
+               protected LifecyclePolicy,
+               protected SendPolicy,
+               protected MultiplexerPolicy {
 // friends
 public:
     template <typename, typename, typename> friend class Handler;
