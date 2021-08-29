@@ -5,6 +5,7 @@
 #include "../network/Context.h"
 #include "../network/Acceptor.h"
 #include "../network/Multiplexer.h"
+#include "../network/Pool.h"
 #include "../handler/Handler.h"
 namespace fluent {
 
@@ -48,11 +49,6 @@ public:
     using MessageCallbackType = MessageCallback;
     using CloseCallbackType   = CloseCallback;
     using HandlerType = Handler<ConnectCallback, MessageCallback, CloseCallback>;
-
-    // unique_ptr makes Context pointer safe in vector rescale and std::swap
-    // token can be accessible in global(server group) multiplexer
-    // TODO O(1) GC
-    using PoolType = std::vector<std::unique_ptr<std::pair<Multiplexer::Token, Context>>>;
 
 public:
     void run() { for(_stop = false; !_stop; ) batch(); }
@@ -98,7 +94,7 @@ private:
 
     Acceptor _acceptor;
     HandlerType _handler;
-    PoolType _connections;
+    Pool _connections;
 
     bool _stop {false};
 };
@@ -163,10 +159,7 @@ inline void BaseServer<ConnectCallback, MessageCallback, CloseCallback>::accept(
         std::pair<InetAddress, Socket> contextArguments = _acceptor.aceeptResult();
         auto &address = contextArguments.first;
         auto &socket = contextArguments.second;
-        _connections.emplace_back(
-            std::make_unique<std::pair<Multiplexer::Token, Context>>(
-                _token, Context(&_looper, address, std::move(socket))));
-        Multiplexer::Bundle bundle = _connections.back().get();
+        Multiplexer::Bundle bundle = _connections.emplace(_token, &_looper, address, std::move(socket));
         _handler.handleNewContext(bundle);
     }
 }
