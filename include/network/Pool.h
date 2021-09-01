@@ -14,6 +14,7 @@ public:
     using Container = std::vector<std::unique_ptr<BundleValueType>>;
 
     constexpr static size_t GC_THRESHOLD = 16;
+    constexpr static size_t PREFETCH = 16;
 
 public:
     // return a bundle for two phase construction
@@ -21,7 +22,7 @@ public:
     Multiplexer::Bundle emplace(Multiplexer::Token token, ContextArgs &&...args);
 
 private:
-    Container _container;
+    Container _container {PREFETCH};
 
 // CRTP interface
 private:
@@ -40,7 +41,7 @@ template <typename ...ContextArgs>
 inline Multiplexer::Bundle Pool::emplace(Multiplexer::Token token, ContextArgs &&...args) {
     if(_container.size() > GC_THRESHOLD) GcBase::updateReusableIndex();
     auto connection = std::make_unique<BundleValueType>(token, Context(std::forward<ContextArgs>(args)...));
-    if(isResuable()) {
+    if(isResuable() && isResuable(GcBase::_reusableIndex)) {
         size_t pos = GcBase::_reusableIndex++;
         _container[pos] = std::move(connection);
         return _container[pos].get();
