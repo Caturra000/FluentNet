@@ -31,46 +31,71 @@ private:
 };
 
 inline Future<std::pair<InetAddress, Socket>> Connector::connect(const InetAddress /*server*/&address) {
-    Socket socket {Socket::INVALID_FD};
-    return makeTupleFuture(_looper, address, std::move(socket), 0)
-        .poll([](std::tuple<InetAddress, Socket, int> &&info) {
-            auto &address = std::get<0>(info);
-            auto &socket = std::get<1>(info);
-            int &err = std::get<2>(info);
-            socket = Socket();
-            int ret = socket.connect(address);
-            err = ret ? errno : 0;
+    Socket socket;
+    // try to connect immediately, then test in async-task
+    int ret = socket.connect(address);
+    int err = ret ? errno : 0;
+    bool reconnect = false;
+    bool nextInstance = false;
+    auto arguments = std::make_tuple(address, std::move(socket), err, reconnect, nextInstance);
+    // safe lifecycle
+    auto constructor = std::make_shared<decltype(arguments)>(std::move(arguments));
+    return this->makeFuture()
+        .poll([constructor](Connector*) {
+            auto &arguments = *constructor;
+            Socket &socket = std::get<1>(arguments);
+            int &err = std::get<2>(arguments);
+            bool &reconnect = std::get<3>(arguments);
+            bool &nextInstance = std::get<4>(arguments);
+            // unlikely
+            if(reconnect) {
+                InetAddress &address = std::get<0>(arguments);
+                if(nextInstance) {
+                    Socket().swap(socket);
+                    nextInstance = false;
+                }
+                int ret = socket.connect(address);
+                err = ret ? errno : 0;
+                reconnect = false;
+                return !err;
+            }
             switch(err) {
                 case 0:
                     return true;
-                case EINPROGRESS:
                 case EINTR:
-                case EISCONN:
-                    // retry if failed
-                    // or go on and err = 0
-                    err = Connector::testFailed(socket);
-                    return !err;
-                case EAGAIN:
-                case EADDRINUSE:
-                case EADDRNOTAVAIL:
-                case ECONNREFUSED:
                 case ENETUNREACH:
-                    // fast retry
+                case ETIMEDOUT:
+                    nextInstance = true;
+                    reconnect = true;
                     return false;
+                case EINPROGRESS:
+                case EISCONN:
+                case EALREADY:
+                case ECONNREFUSED:
+                    // example:
+                    // EINPROGRESS -> EALREADY -> ECONNREFUSED -> connected
+                    if(err = Connector::testFailed(socket)) {
+                        reconnect = true;
+                        return false;
+                    }
+                    // err == 0
+                    return true;
                 default:
-                    // abort, log errno(err) in cancelIf
-                    // err = 1;
+                    // err != 0
                     return true;
             }
         })
-        .cancelIf([](std::tuple<InetAddress, Socket, int> &&info) {
-            auto err = std::get<2>(info);
-            // LOG...
+        .cancelIf([constructor](Connector*) {
+            auto &args = *constructor;
+            int err = std::get<2>(args);
+            // TODO LOG_WARN reason: strerror(err)
+            // TODO cancel and then execute next user-defined callback
             return !!err;
         })
-        .then([](std::tuple<InetAddress, Socket, int/*unused*/> &&info) {
-            auto &address = std::get<0>(info);
-            auto &socket = std::get<1>(info);
+        .then([constructor](Connector*) {
+            auto &arguments = *constructor;
+            InetAddress &address = std::get<0>(arguments);
+            Socket &socket = std::get<1>(arguments);
             return std::make_pair(address, std::move(socket));
         });
 }
