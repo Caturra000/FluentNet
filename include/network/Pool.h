@@ -30,9 +30,9 @@ private:
     friend class WeakReference<Pool>;
 
     // global
-    bool isResuable();
+    bool isReusable();
     // connection
-    bool isResuable(size_t index);
+    bool isReusable(size_t index);
     // access
     Container::reference get(size_t index);
 };
@@ -41,7 +41,7 @@ template <typename ...ContextArgs>
 inline Multiplexer::Bundle Pool::emplace(Multiplexer::Token token, ContextArgs &&...args) {
     if(_container.size() > GC_THRESHOLD) GcBase::updateReusableIndex();
     auto connection = std::make_unique<BundleValueType>(token, Context(std::forward<ContextArgs>(args)...));
-    if(isResuable() && isResuable(GcBase::_reusableIndex)) {
+    if(isReusable() && isReusable(GcBase::_reusableIndex)) {
         size_t pos = GcBase::_reusableIndex++;
         _container[pos] = std::move(connection);
         return _container[pos].get();
@@ -50,11 +50,11 @@ inline Multiplexer::Bundle Pool::emplace(Multiplexer::Token token, ContextArgs &
     return _container.back().get();
 }
 
-inline bool Pool::isResuable() {
+inline bool Pool::isReusable() {
     return GcBase::_reusableIndex != _container.size();
 }
 
-inline bool Pool::isResuable(size_t index) {
+inline bool Pool::isReusable(size_t index) {
     auto &connection = _container[index];
     if(connection == nullptr) return true;
     auto &context = connection->second;

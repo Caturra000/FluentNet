@@ -4,7 +4,7 @@
 namespace fluent {
 
 // GC interface with CRTP style
-// should implement reusable() / isResuable() / get()
+// should implement isReusable() / get()
 template <typename T, size_t step = 2>
 class WeakReference {
 public:
@@ -13,41 +13,71 @@ public:
     void updateReusableIndex();
 
 public:
-    int _reusableIndex;
-    struct { int left, right; } _window;
+    ssize_t _reusableIndex;
+    struct { ssize_t left, right; } _window;
+
+private:
+    void resetWindow();
+    void doUpdate();
 };
 
 template <typename T, size_t step>
 inline void WeakReference<T, step>::updateReusableIndex() {
-    auto resetWindow = [this] {
-        _window.left = 0;
-        _window.right = -1;
-    };
-    if(_reusableIndex != 0) {
-        for(int _ = 0; _ < step; ++_) {
-            if(_window.left > _window.right) {
-                if(static_cast<T*>(this)->isResuable(_window.left)) {
-                    ++_window.right;
-                } else {
-                    ++_window.left;
-                    ++_window.right;
-                    if(_window.left == _reusableIndex) {
-                        resetWindow();
-                    }
-                }
-                continue;
-            }
-            // left/right < reuseIndex
-            if(_window.right + 1 == _reusableIndex) {
-                _reusableIndex = _window.left;
-                resetWindow(); // close window
-            } else if(static_cast<T*>(this)->isResuable(_window.right + 1)) {
-                ++_window.right;
-            } else {
-                std::swap(static_cast<T*>(this)->get(++_window.right),
-                            static_cast<T*>(this)->get(_window.left++));
+    for(size_t _ = 0; _ < step; ++_) {
+        if(_reusableIndex != 0) {
+            doUpdate();
+        } else {
+            break;
+        }
+    }
+}
+
+template <typename T, size_t step>
+inline void WeakReference<T, step>::resetWindow() {
+    _window.left = 0;
+    _window.right = -1;
+}
+
+template <typename T, size_t step>
+inline void WeakReference<T, step>::doUpdate() {
+    // closed window
+    if(_window.left > _window.right) {
+        if(static_cast<T*>(this)->isReusable(_window.left)) {
+            // open window
+            ++_window.right;
+        } else {
+            ++_window.left;
+            ++_window.right;
+            // would be invalid
+            // reset to initial position
+            if(_window.left == _reusableIndex) {
+                resetWindow();
             }
         }
+        return;
+    }
+
+    // actived window
+    //  left < right
+
+    // ensure right < _reusableIndex
+    if(_window.right + 1 == _reusableIndex) {
+        // merge the window
+        // finally get a better index
+        // [left = new_reusable_idex, right] + [old_reusable_index, UNKNOWN_BOUND)
+        // ==> [new_reusable_index, UNKNOWN_BOUND)
+        _reusableIndex = _window.left;
+        resetWindow();
+
+    // _window.right + 1 < _reusableIndex
+
+    } else if(static_cast<T*>(this)->isReusable(_window.right + 1)) {
+        ++_window.right;
+    } else {
+        // _window.right + 1 is not reusable
+        // but we can swap the left resuable resource and go on
+        std::swap(static_cast<T*>(this)->get(++_window.right),
+                    static_cast<T*>(this)->get(_window.left++));
     }
 }
 
