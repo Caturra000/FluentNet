@@ -269,6 +269,7 @@ TODO 暂时没啥好的介绍方式
 - `networks/Context`单个类管理所有`TCP`通信相关特性，同时用各种`policy`类隔离私有实现
 - `Multiplexer`、`Looper`、`Server`的生命周期相比以前实现的轮子`mutty`是完全倒置的，至少`Server`的生命周期大于`Looper`，`Multiplexer`的生命周期可以是独立的，也可以在`Server`内部，`epoll`本身线程安全，库内部只需少量锁即可线程安全
 - 生命周期（`Lifecycle`）与`Context`分离，不需要显式使用`std::shared_ptr/std::weak_ptr`来声明`Context`生命周期，也避免明确不需要生命周期保护时不必要的引用计数。在使用上，`callback`形式是自身安全的，但`future`仍需要`Lifecycle`
+- 通过一种直接在队列中求偏移量的方式实现`Context`中的异步`send`（`handleWriteComplete`和`sendPolicy`）
 
 ## TODO
 
