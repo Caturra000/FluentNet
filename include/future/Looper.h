@@ -15,10 +15,17 @@
 #define CATURRA_16X(action) do { CATURRA_8X(action); CATURRA_8X(action); } while(0)
 
 #include <bits/stdc++.h>
-
+#include "../coroutine/co.hpp"
 namespace fluent {
 
 class Looper {
+
+    template <typename>
+    friend class Future;
+
+    template <typename>
+    friend class Promise;
+
 public:
 
     void loop() { unroll4x(); }
@@ -45,26 +52,25 @@ public:
     // unsafe
     void loopOnceUnchecked() {
         // debug();
-        _lastEvent = std::move(_mq.front());
+        auto co = std::move(_mq.front());
         _mq.pop();
-        _lastEvent();
+        co->resume();
+        if(co->running()) {
+            _mq.emplace(std::move(co));
+        }
     }
 
     void loopOnce() { if(!_mq.empty()) loopOnceUnchecked(); }
 
-    // TODO
-    // receive and return a context object
-    //
-    // since it is a FAKE yield (will break any result and no context)
-    // you should save context by yourself (via lambda reference capture)
     void yield() {
-        _mq.emplace(std::move(_lastEvent));
+        co::this_coroutine::yield();
     }
 
-    void post(std::function<void()> event) {
-        if(event) {
-            _mq.emplace(std::move(event));
-        }
+    template <typename F, typename ...Args>
+    void post(F &&f, Args &&...args) {
+        _mq.emplace(_env->createCoroutine(
+            std::forward<F>(f),
+            std::forward<Args>(args)...));
     }
 
 private:
@@ -73,9 +79,9 @@ private:
     }
 
 private:
-    std::queue<std::function<void()>> _mq;
-    std::function<void()>             _lastEvent;
-    int                               _global {}; // debug
+    co::Environment                            *_env {&co::open()};
+    std::queue<std::shared_ptr<co::Coroutine>> _mq;
+    int                                        _global {}; // debug
 };
 
 } // fluent

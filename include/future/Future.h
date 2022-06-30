@@ -49,28 +49,15 @@ public:
         // T or T& or T&& ?
         // using ForwardType = decltype(std::get<0>(std::declval<typename FunctionTraits<Functor>::ArgsTuple>()));
         using ForwardType = typename std::tuple_element<0, typename FunctionTraits<Functor>::ArgsTuple>::type;
-        Promise<R> promise(_looper);
-        auto future = promise.get();
-        State state = _shared->_state;
-        if(state == State::NEW || state == State::READY) {
-            // async request, will be set value and then callback
-            setCallback([f = std::forward<Functor>(f), promise = std::move(promise)](T &&value) mutable {
-                // for callback f
-                // f(T) and f(T&) will copy current Future<T> value in shared,
-                // - T will copy to your routine. It is safe to move
-                // - T& just use reference where it is in shared state
-                // T&& will move the parent future value
-                // - T&& just use reference, but moving this value to your routine is unsafe
-                promise.setValue(f(std::forward<ForwardType>(value)));
-            });
-            if(state == State::READY) {
-                postRequest();
-            }
-        } else if(state == State::CANCEL) {
-            // return a future will never be setValue()
-            promise.cancel();
-        }
-        return future;
+        return futureRoutine<R>([f](T &&value, Promise<R> promise) {
+            // for callback f
+            // f(T) and f(T&) will copy current Future<T> value in shared,
+            // - T will copy to your routine. It is safe to move
+            // - T& just use reference where it is in shared state
+            // T&& will move the parent future value
+            // - T&& just use reference, but moving this value to your routine is unsafe
+            promise.setValue(f(std::forward<ForwardType>(value)));
+        });
     }
 
     // receive: bool(T) bool(T&) bool(T&&)
@@ -83,26 +70,12 @@ public:
               typename PollRequired = typename std::enable_if<AtLeastThenValid /*&& WontAcceptRvalue*/ && ShouldReturnBool>::type>
     Future<T> poll(Functor &&f) {
         using ForwardType = typename std::tuple_element<0, typename FunctionTraits<Functor>::ArgsTuple>::type;
-        Promise<T> promise(_looper);
-        auto future = promise.get();
-        State state = _shared->_state;
-        if(state == State::NEW || state == State::READY) {
-            // reuse _then
-            setCallback([f = std::forward<Functor>(f), promise = std::move(promise), looper = _looper](T &&value) mutable {
-                if(f(std::forward<ForwardType>(value))) {
-                    promise.setValue(std::forward<ForwardType>(value));
-                } else {
-                    looper->yield();
-                }
-            });
-            if(state == State::READY) {
-                postRequest();
+        return futureRoutine<T>([f, looper = _looper](T &&value, Promise<T> promise) mutable {
+            while(!f(std::forward<ForwardType>(value))) {
+                looper->yield();
             }
-        } else if(_shared->_state == State::CANCEL) {
-            // return a future will never be setValue()
-            promise.cancel();
-        }
-        return future;
+            promise.setValue(std::forward<ForwardType>(value));
+        });
     }
 
     // receive: bool(T) bool(T&) bool(T&&)
@@ -115,24 +88,12 @@ public:
               typename PollRequired = typename std::enable_if<AtLeastThenValid /*&& WontAcceptRvalue*/ && ShouldReturnBool>::type>
     Future<T> poll(size_t count, Functor &&f) {
         using ForwardType = typename std::tuple_element<0, typename FunctionTraits<Functor>::ArgsTuple>::type;
-        Promise<T> promise(_looper);
-        auto future = promise.get();
-        State state = _shared->_state;
-        if(state == State::NEW || state == State::READY) {
-            setCallback([f = std::forward<Functor>(f), promise = std::move(promise), looper = _looper, count](T &&value) mutable {
-                if(count-- == 0 || f(std::forward<ForwardType>(value))) {
-                    promise.setValue(std::forward<ForwardType>(value));
-                } else {
-                    looper->yield();
-                }
-            });
-            if(state == State::READY) {
-                postRequest();
+        return futureRoutine<T>([f, looper = _looper, count](T &&value, Promise<T> promise) mutable {
+            while(count-- && !f(std::forward<ForwardType>(value))) {
+                looper->yield();
             }
-        } else if(_shared->_state == State::CANCEL) {
-            promise.cancel();
-        }
-        return future;
+            promise.setValue(std::forward<ForwardType>(value));
+        });
     }
 
     // receive: bool(T) bool(T&) bool(T&&)
@@ -146,25 +107,14 @@ public:
               typename CancelIfRequired = typename std::enable_if<AtLeastThenValid /*&& WontAcceptRvalue*/ && ShouldReturnBool>::type>
     Future<T> cancelIf(Functor &&f) {
         using ForwardType = typename std::tuple_element<0, typename FunctionTraits<Functor>::ArgsTuple>::type;
-        Promise<T> promise(_looper);
-        auto future = promise.get();
-        State state = _shared->_state;
-        if(state == State::NEW || state == State::READY) {
-            setCallback([f = std::forward<Functor>(f), promise = std::move(promise)](T &&value) mutable {
-                if(f(std::forward<ForwardType>(value))) {
-                    promise.cancel();
-                } else {
-                    // forward the current future to the next
-                    promise.setValue(std::forward<ForwardType>(value));
-                }
-            });
-            if(state == State::READY) {
-                postRequest();
+        return futureRoutine<T>([f](T &&value, Promise<T> promise) {
+            if(f(std::forward<ForwardType>(value))) {
+                promise.cancel();
+            } else {
+                // forward the current future to the next
+                promise.setValue(std::forward<ForwardType>(value));
             }
-        } else if(_shared->_state == State::CANCEL) {
-            promise.cancel();
-        }
-        return future;
+        });
     }
 
     // receive: void(T) void(T&)
@@ -176,7 +126,7 @@ public:
               typename WaitRequired = typename std::enable_if<AtLeastThenValid && WontAcceptRvalue && ShouldReturnVoid>::type>
     Future<T> wait(size_t count, std::chrono::milliseconds duration, Functor &&f) {
         auto start = std::chrono::system_clock::time_point{};
-        return poll([f = std::forward<Functor>(f), start, duration, remain = count](T &self) mutable {
+        return poll([f, start, duration, remain = count](T &self) mutable {
             auto current = std::chrono::system_clock::now();
             // call once
             if(start == std::chrono::system_clock::time_point{}) {
@@ -216,7 +166,7 @@ public:
               bool ShouldReturnVoid = std::is_same<typename FunctionTraits<Functor>::ReturnType, void>::value,
               typename WaitRequired = typename std::enable_if<AtLeastThenValid && WontAcceptRvalue && ShouldReturnVoid>::type>
     Future<T> wait(std::chrono::system_clock::time_point timePoint, Functor &&f) {
-        return poll([f = std::forward<Functor>(f), timePoint](T &self) mutable {
+        return poll([f, timePoint](T &self) mutable {
             auto current = std::chrono::system_clock::now();
             if(current >= timePoint) {
                 f(self);
@@ -227,14 +177,6 @@ public:
     }
 
 private:
-    void setCallback(const std::function<void(T&&)> &f) {
-        _shared->_then = f;
-    }
-
-    void setCallback(std::function<void(T&&)> &&f) {
-        _shared->_then = std::move(f);
-    }
-
     // unsafe
     // ensure: READY & has then_
     void postRequest() {
@@ -247,8 +189,35 @@ private:
         });
     }
 
+    // maintain the state machine
+    // Callback: void(T&&, Promise<R>)
+    template <typename R, typename Callback>
+    Future<R> futureRoutine(Callback &&callback) {
+        Promise<R> promise(_looper);
+        auto future = promise.get();
+        State state = _shared->_state;
+        if(state == State::NEW || state == State::READY) {
+            // async request, will be set value and then callback
+
+            // register request
+            _shared->_then = [promise = std::move(promise), callback](T &&value) mutable {
+                callback(std::forward<T>(value), std::move(promise));
+            };
+
+            // value is ready
+            // post request immediately
+            if(state == State::READY) {
+                postRequest();
+            }
+        } else if(state == State::CANCEL) {
+            // return a future will never be setValue()
+            promise.cancel();
+        }
+        return future;
+    }
+
 private:
-    Looper                           *_looper;
+    Looper                     *_looper;
     SharedPtr<ControlBlock<T>> _shared;
 };
 
