@@ -41,6 +41,10 @@ public:
 
     void switchFrom(Context *previous);
 
+    // 只在上一个context已经销毁的时候调用
+    // 既直接切入到this，不为上一个context做保护现场
+    void switchOnly();
+
     bool test();
 
 private:
@@ -59,6 +63,10 @@ private:
 
 inline void Context::switchFrom(Context *previous) {
     contextSwitch(previous, this);
+}
+
+inline void Context::switchOnly() {
+    contextSwitchOnly(this);
 }
 
 inline void Context::prepare(Context::Callback ret, Context::Word rdi) {
