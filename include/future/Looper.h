@@ -19,7 +19,6 @@
 namespace fluent {
 
 class Looper {
-
     template <typename>
     friend class Future;
 
@@ -27,62 +26,72 @@ class Looper {
     friend class Promise;
 
 public:
+    void loop();
 
-    void loop() { unroll4x(); }
-
-    void stop() {}
-
-    void unroll4x() {
-        size_t n = _mq.size();
-        SKYWIND3000_CPU_LOOP_UNROLL_4X(
-            {
-                loopOnceUnchecked();
-            },
-            {
-                CATURRA_2X(loopOnceUnchecked());
-            },
-            {
-                CATURRA_4X(loopOnceUnchecked());
-            },
-            n
-        );
-
-    }
+    void loopOnce();
 
     // unsafe
-    void loopOnceUnchecked() {
-        // debug();
-        auto co = std::move(_mq.front());
-        _mq.pop();
-        co->resume();
-        if(co->running()) {
-            _mq.emplace(std::move(co));
-        }
-    }
+    void loopOnceUnchecked();
 
-    void loopOnce() { if(!_mq.empty()) loopOnceUnchecked(); }
-
-    void yield() {
-        co::this_coroutine::yield();
-    }
+    void yield();
 
     template <typename F, typename ...Args>
-    void post(F &&f, Args &&...args) {
-        _mq.emplace(_env->createCoroutine(
-            std::forward<F>(f),
-            std::forward<Args>(args)...));
-    }
+    void post(F &&f, Args &&...args);
 
 private:
-    void debug() {
-        std::cout << "[loop msg] " << _global++ << std::endl;
-    }
+    void unroll4x();
 
 private:
-    co::Environment                            *_env {&co::open()};
-    std::queue<std::shared_ptr<co::Coroutine>> _mq;
-    int                                        _global {}; // debug
+    using MessageQueue = std::queue<std::shared_ptr<co::Coroutine>>;
+    co::Environment *_env {&co::open()};
+    MessageQueue _mq;
 };
+
+inline void Looper::loop() {
+    unroll4x();
+}
+
+inline void Looper::loopOnce() {
+    if(!_mq.empty()) {
+        loopOnceUnchecked();
+    }
+}
+
+inline void Looper::loopOnceUnchecked() {
+    auto co = std::move(_mq.front());
+    _mq.pop();
+    co->resume();
+    if(co->running()) {
+        _mq.emplace(std::move(co));
+    }
+}
+
+inline void Looper::yield() {
+    co::this_coroutine::yield();
+}
+
+template <typename F, typename ...Args>
+inline void Looper::post(F &&f, Args &&...args) {
+    _mq.emplace(_env->createCoroutine(
+        std::forward<F>(f),
+        std::forward<Args>(args)...));
+}
+
+inline void Looper::unroll4x() {
+    size_t n = _mq.size();
+    SKYWIND3000_CPU_LOOP_UNROLL_4X(
+        {
+            loopOnceUnchecked();
+        },
+        {
+            CATURRA_2X(loopOnceUnchecked());
+        },
+        {
+            CATURRA_4X(loopOnceUnchecked());
+        },
+        n
+    );
+}
 
 } // fluent
 

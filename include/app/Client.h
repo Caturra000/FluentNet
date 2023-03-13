@@ -8,11 +8,16 @@
 #include "../handler/Handler.h"
 namespace fluent {
 
+// a client with parameterized types
+// it is needed to be specified all the templated types
+// for reasons of higher performance and traits
+// see `Client` in common cases
 template <typename ConnectCallback,
           typename MessageCallback,
           typename CloseCallback>
 class BaseClient;
 
+// applicable in most sitatuions
 using Client = BaseClient<std::function<void(Context*)>,
                           std::function<void(Context*)>,
                           std::function<void(Context*)>>;
@@ -23,31 +28,45 @@ template <typename ConnectCallback,
           typename CloseCallback>
 class BaseClient {
 public:
+    // help traits
     using ConnectCallbackType = ConnectCallback;
     using MessageCallbackType = MessageCallback;
     using CloseCallbackType   = CloseCallback;
     using HandlerType = Handler<ConnectCallback, MessageCallback, CloseCallback>;
 
 public:
-    void run() { for(_stop = false; !_stop; ) batch(); }
+
+    // run client's looping
+    // keep running until stop()
+    void run();
+
+    // activate reactor and run a batch of tasks
+    // then return to your application
     void batch();
 
-    // connect group
-    // future: in client loop
+    // connect to specified inetaddress
+    // actually it is async-connect()
+    // it creates an in-loop future to generate a connection context
+    // and wont block your application's control flow
     Future<Context*> connect(InetAddress address);
 
     // callback: T(context*), no restriction on the return type T
     template <typename F>
     auto connect(InetAddress address, F &&callback) -> Future<typename FunctionTraits<F>::ReturnType>;
 
+    // simply stop looping
     void stop() { _stop = true; }
 
     Looper* looper() { return &_looper; }
+
+    /// register callbacks
 
     void onConnect(ConnectCallback callback) { _handler.onConnect(std::move(callback)); }
     void onMessage(MessageCallback callback) { _handler.onMessage(std::move(callback)); }
     void onClose(CloseCallback callback) { _handler.onClose(std::move(callback)); }
 
+// basic attibutes
+public:
     BaseClient();
     BaseClient(std::shared_ptr<Multiplexer> multiplexer);
     BaseClient(ConnectCallback connectCallback,
@@ -63,19 +82,42 @@ public:
     BaseClient& operator=(const BaseClient&) = delete;
     BaseClient& operator=(BaseClient&&) = default;
 
+// about events
 private:
+    // owned looper for event-driven cycles
     Looper _looper;
 
+    // demultiplex and dispatch events
     std::shared_ptr<Multiplexer> _multiplexer;
+
+    // flag for Multiplexer optimization
+    // see batch() in details
     bool _isOuterMultiplexer;
+
+    // identifier in global environment
+    // passed to handler
     const Multiplexer::Token _token;
 
+// user-level processing
+private:
+    // an async-connector with promise/future pattern
     Connector _connector;
+
+    // a handler of parameterized type
+    // in common cases, it is Handler<std::function...>
     HandlerType _handler;
+
+    // a reusable connection pool with weak-reference marking algorithm
+    // connection index may be changed in every step
     Pool _connections;
 
     bool _stop {false};
 };
+
+template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
+inline void BaseClient<ConnectCallback, MessageCallback, CloseCallback>::run() {
+    for(_stop = false; !_stop; ) batch();
+}
 
 template <typename ConnectCallback, typename MessageCallback, typename CloseCallback>
 inline void BaseClient<ConnectCallback, MessageCallback, CloseCallback>::batch() {
